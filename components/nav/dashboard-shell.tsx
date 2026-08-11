@@ -1,14 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { LogOut, Shield, ClipboardCheck } from "lucide-react";
+import { LogOut, Shield, ClipboardCheck, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/nav";
 import { RankBadge } from "@/components/system/badges";
 import { NotificationBell } from "@/components/system/notification-bell";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { Rank } from "@/types";
 
 function NavLink({
@@ -18,6 +19,7 @@ function NavLink({
   children,
   badge,
   tone = "cyan",
+  onClick,
 }: {
   href: string;
   active: boolean;
@@ -25,10 +27,12 @@ function NavLink({
   children: ReactNode;
   badge?: ReactNode;
   tone?: "cyan" | "violet";
+  onClick?: () => void;
 }) {
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={cn(
         "group relative flex items-center justify-between gap-3 rounded-md py-2.5 pr-3 pl-4 text-sm transition-colors",
         active
@@ -58,6 +62,42 @@ function NavLink({
   );
 }
 
+/** Kept in one place so the desktop sidebar and the mobile "More" sheet can never drift apart. */
+function AdminNavLinks({
+  isActive,
+  pendingApprovalCount,
+  onNavigate,
+}: {
+  isActive: (href: string) => boolean;
+  pendingApprovalCount: number;
+  onNavigate?: () => void;
+}) {
+  return (
+    <div className="mb-2 space-y-1 pt-3" style={{ borderTop: "1px solid oklch(0.6 0.23 296 / 20%)" }}>
+      <p className="label-system px-4 pb-1 text-glow-violet">Admin</p>
+      <NavLink href="/admin/templates" active={isActive("/admin/templates")} icon={Shield} tone="violet" onClick={onNavigate}>
+        Templates
+      </NavLink>
+      <NavLink
+        href="/admin/approvals"
+        active={isActive("/admin/approvals")}
+        icon={ClipboardCheck}
+        tone="violet"
+        onClick={onNavigate}
+        badge={
+          pendingApprovalCount > 0 ? (
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+              {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
+            </span>
+          ) : null
+        }
+      >
+        Approvals
+      </NavLink>
+    </div>
+  );
+}
+
 export function DashboardShell({
   children,
   playerName,
@@ -76,8 +116,28 @@ export function DashboardShell({
   pendingApprovalCount: number;
 }) {
   const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  // Belt-and-suspenders: also close the sheet on any route change (back button,
+  // programmatic navigation, etc.), not just the in-sheet link clicks below.
+  // Adjusted during render (not an effect) per React's "adjusting state when a
+  // prop changes" pattern — avoids the extra render pass an effect would cost.
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
+    setMoreOpen(false);
+  }
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+
+  // The bottom tab bar only has room for a handful of items (see spec: Home/Quest/
+  // Progress/Party/Player) — everything else (plus Admin) lives behind "MORE" so
+  // every page stays reachable on mobile instead of only existing in the desktop
+  // sidebar.
+  const primaryItems = NAV_ITEMS.filter((item) => item.mobile);
+  const overflowItems = NAV_ITEMS.filter((item) => !item.mobile);
+  const moreActive = overflowItems.some((item) => isActive(item.href)) || isActive("/admin");
+  const closeMore = () => setMoreOpen(false);
 
   return (
     <div className="min-h-screen">
@@ -100,29 +160,7 @@ export function DashboardShell({
           ))}
         </nav>
 
-        {isAdmin && (
-          <div className="mb-2 space-y-1 pt-3" style={{ borderTop: "1px solid oklch(0.6 0.23 296 / 20%)" }}>
-            <p className="label-system px-4 pb-1 text-glow-violet">Admin</p>
-            <NavLink href="/admin/templates" active={isActive("/admin/templates")} icon={Shield} tone="violet">
-              Templates
-            </NavLink>
-            <NavLink
-              href="/admin/approvals"
-              active={isActive("/admin/approvals")}
-              icon={ClipboardCheck}
-              tone="violet"
-              badge={
-                pendingApprovalCount > 0 ? (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                    {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
-                  </span>
-                ) : null
-              }
-            >
-              Approvals
-            </NavLink>
-          </div>
-        )}
+        {isAdmin && <AdminNavLinks isActive={isActive} pendingApprovalCount={pendingApprovalCount} />}
 
         <button
           type="button"
@@ -160,7 +198,7 @@ export function DashboardShell({
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-border/60 bg-sidebar/95 py-2 backdrop-blur-md lg:hidden">
-        {NAV_ITEMS.filter((item) => item.mobile).map((item) => {
+        {primaryItems.map((item) => {
           const active = isActive(item.href);
           const Icon = item.icon;
           return (
@@ -183,6 +221,61 @@ export function DashboardShell({
             </Link>
           );
         })}
+
+        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+          <SheetTrigger
+            className={cn(
+              "relative flex min-w-[3.5rem] flex-col items-center gap-1 px-2 py-1.5 text-[10px] transition-colors",
+              moreActive ? "text-glow-cyan" : "text-muted-foreground"
+            )}
+          >
+            {moreActive && (
+              <span
+                className="absolute -top-2 h-1 w-1 rounded-full bg-primary"
+                style={{ boxShadow: "0 0 8px 2px var(--primary)" }}
+              />
+            )}
+            <Menu className="h-5 w-5" />
+            <span className="heading-system tracking-wide">MORE</span>
+          </SheetTrigger>
+          <SheetContent
+            side="bottom"
+            className="max-h-[75vh] overflow-y-auto rounded-t-2xl border-border/60 bg-sidebar/98 px-3 pb-6"
+          >
+            <SheetHeader className="px-1 pb-0">
+              <SheetTitle className="label-system-accent">Navigation</SheetTitle>
+            </SheetHeader>
+            <nav className="space-y-1 px-1">
+              {overflowItems.map((item) => (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  active={isActive(item.href)}
+                  icon={item.icon}
+                  onClick={closeMore}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+
+            {isAdmin && (
+              <AdminNavLinks isActive={isActive} pendingApprovalCount={pendingApprovalCount} onNavigate={closeMore} />
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                closeMore();
+                signOut({ callbackUrl: "/login" });
+              }}
+              className="flex items-center gap-3 rounded-md px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="heading-system tracking-wide">Logout</span>
+            </button>
+          </SheetContent>
+        </Sheet>
       </nav>
     </div>
   );

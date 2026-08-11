@@ -60,6 +60,8 @@ export async function activateTemplate(input: OnboardingInput) {
   await user.save();
 
   revalidatePath("/dashboard");
+  revalidatePath("/routine");
+  revalidatePath("/quest");
 
   return { success: true as const, player: toPlayerSummary(user) };
 }
