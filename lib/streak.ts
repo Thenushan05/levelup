@@ -1,5 +1,6 @@
 import { DailyWorkout } from "@/models/DailyWorkout";
 import { WorkoutTemplate } from "@/models/WorkoutTemplate";
+import { connectToDatabase } from "@/lib/mongodb";
 import { addDays, dayOfWeekFromKey, todayKey } from "@/lib/dates";
 import type { HydratedDocument } from "mongoose";
 import type { UserDoc } from "@/models/User";
@@ -18,6 +19,8 @@ export async function recomputeStreak(user: HydratedDocument<UserDoc>): Promise<
     user.currentStreak = 0;
     return;
   }
+
+  await connectToDatabase();
 
   const template = await WorkoutTemplate.findById(user.activeTemplateId).lean();
   if (!template) {

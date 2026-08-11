@@ -1,18 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import { PlayerStatusCard } from "@/components/dashboard/player-status-card";
 import { DailyQuestCard } from "@/components/dashboard/daily-quest-card";
 import { WeeklyQuestCard } from "@/components/dashboard/weekly-quest-card";
 import { StreakCard } from "@/components/dashboard/streak-card";
 import { AttendanceCard } from "@/components/dashboard/attendance-card";
 import { PartyActivityPreview } from "@/components/dashboard/party-activity-preview";
-import { LevelUpModal } from "@/components/system/level-up-modal";
+import { LevelUpReveal } from "@/components/system/level-up-reveal";
 import type { PlayerStatusDTO } from "@/actions/player";
 import type { AttendanceStatusDTO } from "@/actions/attendance";
 import type { WeeklyQuestStatusDTO } from "@/actions/progress";
 import type { PartySummaryDTO, PartyActivityDTO } from "@/actions/party";
-import type { DailyWorkoutDTO, LevelUpResult } from "@/types";
+import type { DailyWorkoutDTO } from "@/types";
 
 export function DashboardClient({
   status,
@@ -29,8 +28,6 @@ export function DashboardClient({
   party: PartySummaryDTO | null;
   activity: PartyActivityDTO[];
 }) {
-  const [levelUp, setLevelUp] = useState<LevelUpResult | null>(null);
-
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-12">
@@ -41,7 +38,7 @@ export function DashboardClient({
           <DailyQuestCard quest={quest} />
         </div>
         <div className="space-y-6 lg:col-span-3">
-          <AttendanceCard initial={attendance} onLevelUp={setLevelUp} />
+          <AttendanceCard initial={attendance} />
           <WeeklyQuestCard weekly={weekly} />
           <StreakCard current={status.player.currentStreak} longest={status.player.longestStreak} />
         </div>
@@ -49,7 +46,7 @@ export function DashboardClient({
 
       <PartyActivityPreview activity={activity} hasParty={!!party} />
 
-      <LevelUpModal levelUp={levelUp} onClose={() => setLevelUp(null)} />
+      <LevelUpReveal newLevelUp={status.newLevelUp} />
     </div>
   );
 }

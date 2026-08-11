@@ -55,42 +55,42 @@
 :root,
 .dark {
   color-scheme: dark;
-  --background: oklch(0.11 0.014 250);
-  --foreground: oklch(0.94 0.02 220);
-  --card: oklch(0.145 0.02 250);
-  --card-foreground: oklch(0.94 0.02 220);
-  --popover: oklch(0.16 0.02 250);
-  --popover-foreground: oklch(0.94 0.02 220);
-  --primary: oklch(0.82 0.14 210);
-  --primary-foreground: oklch(0.13 0.03 230);
-  --secondary: oklch(0.62 0.19 295);
+  --background: oklch(0.08 0.014 255);
+  --foreground: oklch(0.95 0.02 220);
+  --card: oklch(0.13 0.024 255);
+  --card-foreground: oklch(0.95 0.02 220);
+  --popover: oklch(0.14 0.026 255);
+  --popover-foreground: oklch(0.95 0.02 220);
+  --primary: oklch(0.83 0.17 213);
+  --primary-foreground: oklch(0.1 0.03 230);
+  --secondary: oklch(0.6 0.23 296);
   --secondary-foreground: oklch(0.97 0.02 295);
-  --muted: oklch(0.2 0.02 250);
-  --muted-foreground: oklch(0.63 0.03 230);
-  --accent: oklch(0.22 0.035 220);
-  --accent-foreground: oklch(0.94 0.02 220);
-  --destructive: oklch(0.62 0.21 25);
+  --muted: oklch(0.19 0.022 255);
+  --muted-foreground: oklch(0.65 0.035 230);
+  --accent: oklch(0.21 0.045 220);
+  --accent-foreground: oklch(0.95 0.02 220);
+  --destructive: oklch(0.62 0.22 25);
   --destructive-foreground: oklch(0.97 0.02 25);
-  --success: oklch(0.75 0.16 175);
-  --success-foreground: oklch(0.13 0.03 175);
-  --rank: oklch(0.78 0.17 85);
-  --border: oklch(0.82 0.14 210 / 16%);
+  --success: oklch(0.76 0.17 172);
+  --success-foreground: oklch(0.12 0.03 175);
+  --rank: oklch(0.8 0.18 85);
+  --border: oklch(0.83 0.17 213 / 20%);
   --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.82 0.14 210 / 55%);
-  --chart-1: oklch(0.82 0.14 210);
-  --chart-2: oklch(0.62 0.19 295);
-  --chart-3: oklch(0.75 0.16 175);
-  --chart-4: oklch(0.78 0.17 85);
-  --chart-5: oklch(0.62 0.21 25);
-  --radius: 0.6rem;
-  --sidebar: oklch(0.1 0.016 250);
-  --sidebar-foreground: oklch(0.94 0.02 220);
-  --sidebar-primary: oklch(0.82 0.14 210);
-  --sidebar-primary-foreground: oklch(0.13 0.03 230);
-  --sidebar-accent: oklch(0.18 0.03 220);
-  --sidebar-accent-foreground: oklch(0.94 0.02 220);
-  --sidebar-border: oklch(0.82 0.14 210 / 14%);
-  --sidebar-ring: oklch(0.82 0.14 210 / 55%);
+  --ring: oklch(0.83 0.17 213 / 55%);
+  --chart-1: oklch(0.83 0.17 213);
+  --chart-2: oklch(0.6 0.23 296);
+  --chart-3: oklch(0.76 0.17 172);
+  --chart-4: oklch(0.8 0.18 85);
+  --chart-5: oklch(0.62 0.22 25);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.07 0.016 255);
+  --sidebar-foreground: oklch(0.95 0.02 220);
+  --sidebar-primary: oklch(0.83 0.17 213);
+  --sidebar-primary-foreground: oklch(0.1 0.03 230);
+  --sidebar-accent: oklch(0.19 0.035 220);
+  --sidebar-accent-foreground: oklch(0.95 0.02 220);
+  --sidebar-border: oklch(0.83 0.17 213 / 16%);
+  --sidebar-ring: oklch(0.83 0.17 213 / 55%);
 }
 
 @layer base {
@@ -103,71 +103,154 @@
   body {
     @apply bg-background text-foreground;
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.82 0.14 210 / 10%), transparent),
-      radial-gradient(ellipse 60% 40% at 100% 100%, oklch(0.62 0.19 295 / 8%), transparent);
+      radial-gradient(ellipse 90% 55% at 15% -10%, oklch(0.83 0.17 213 / 16%), transparent),
+      radial-gradient(ellipse 70% 50% at 105% 10%, oklch(0.6 0.23 296 / 14%), transparent),
+      radial-gradient(ellipse 65% 45% at 50% 115%, oklch(0.6 0.23 296 / 8%), transparent),
+      repeating-linear-gradient(
+        0deg,
+        oklch(0.83 0.17 213 / 3%) 0px,
+        oklch(0.83 0.17 213 / 3%) 1px,
+        transparent 1px,
+        transparent 48px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        oklch(0.83 0.17 213 / 3%) 0px,
+        oklch(0.83 0.17 213 / 3%) 1px,
+        transparent 1px,
+        transparent 48px
+      );
     background-attachment: fixed;
   }
   ::selection {
-    background: oklch(0.82 0.14 210 / 30%);
+    background: oklch(0.83 0.17 213 / 32%);
   }
 }
 
 @layer components {
-  /* Core HUD panel: dark blue-black surface with a faint glowing cyan border */
+  /*
+   * Core "System" HUD panel — plain rounded box (so its box-shadow glow
+   * radiates freely; clip-path would cut the glow off at the clip edge)
+   * plus a pair of glowing targeting-bracket corners layered on top via
+   * ::before/::after. One shared shape language for every card in the app
+   * instead of plain rounded rectangles, so it reads as a game/anime system
+   * window rather than a generic admin dashboard.
+   */
   .system-panel {
-    @apply relative rounded-lg border bg-card/80 backdrop-blur-sm;
-    border-color: oklch(0.82 0.14 210 / 22%);
+    @apply relative rounded-lg bg-card/85 backdrop-blur-sm;
+    background-image: linear-gradient(155deg, oklch(0.83 0.17 213 / 8%), transparent 45%);
+    border: 1px solid oklch(0.83 0.17 213 / 32%);
     box-shadow:
-      0 0 0 1px oklch(0.82 0.14 210 / 6%) inset,
-      0 0 24px -8px oklch(0.82 0.14 210 / 25%);
+      0 0 0 1px oklch(0.83 0.17 213 / 10%) inset,
+      0 0 22px -6px oklch(0.83 0.17 213 / 45%),
+      0 0 60px -22px oklch(0.6 0.23 296 / 35%);
+  }
+  .system-panel::before,
+  .system-panel::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+    border-color: oklch(0.87 0.17 213 / 90%);
+    filter: drop-shadow(0 0 5px oklch(0.83 0.17 213 / 80%));
+  }
+  .system-panel::before {
+    top: 3px;
+    left: 3px;
+    border-top: 2px solid;
+    border-left: 2px solid;
+  }
+  .system-panel::after {
+    bottom: 3px;
+    right: 3px;
+    border-bottom: 2px solid;
+    border-right: 2px solid;
   }
   .system-panel-violet {
-    border-color: oklch(0.62 0.19 295 / 28%);
+    border-color: oklch(0.6 0.23 296 / 40%);
+    background-image: linear-gradient(155deg, oklch(0.6 0.23 296 / 10%), transparent 45%);
     box-shadow:
-      0 0 0 1px oklch(0.62 0.19 295 / 6%) inset,
-      0 0 24px -8px oklch(0.62 0.19 295 / 30%);
+      0 0 0 1px oklch(0.6 0.23 296 / 10%) inset,
+      0 0 22px -6px oklch(0.6 0.23 296 / 50%),
+      0 0 60px -22px oklch(0.6 0.23 296 / 40%);
+  }
+  .system-panel-violet::before,
+  .system-panel-violet::after {
+    border-color: oklch(0.75 0.2 296 / 90%);
+    filter: drop-shadow(0 0 5px oklch(0.6 0.23 296 / 80%));
   }
   .system-panel-success {
-    border-color: oklch(0.75 0.16 175 / 30%);
+    border-color: oklch(0.76 0.17 172 / 42%);
+    background-image: linear-gradient(155deg, oklch(0.76 0.17 172 / 10%), transparent 45%);
     box-shadow:
-      0 0 0 1px oklch(0.75 0.16 175 / 6%) inset,
-      0 0 24px -8px oklch(0.75 0.16 175 / 30%);
+      0 0 0 1px oklch(0.76 0.17 172 / 10%) inset,
+      0 0 22px -6px oklch(0.76 0.17 172 / 50%),
+      0 0 60px -22px oklch(0.76 0.17 172 / 35%);
+  }
+  .system-panel-success::before,
+  .system-panel-success::after {
+    border-color: oklch(0.85 0.17 172 / 90%);
+    filter: drop-shadow(0 0 5px oklch(0.76 0.17 172 / 80%));
+  }
+  .system-panel-danger {
+    border-color: oklch(0.62 0.22 25 / 45%);
+    background-image: linear-gradient(155deg, oklch(0.62 0.22 25 / 12%), transparent 45%);
+    box-shadow:
+      0 0 0 1px oklch(0.62 0.22 25 / 10%) inset,
+      0 0 22px -6px oklch(0.62 0.22 25 / 55%),
+      0 0 60px -22px oklch(0.62 0.22 25 / 40%);
+  }
+  .system-panel-danger::before,
+  .system-panel-danger::after {
+    border-color: oklch(0.7 0.2 25 / 90%);
+    filter: drop-shadow(0 0 5px oklch(0.62 0.22 25 / 80%));
   }
 
   /* Uppercase tracked "system" label text used throughout the HUD */
   .label-system {
-    @apply font-heading uppercase tracking-[0.18em] text-xs text-muted-foreground;
+    @apply font-heading uppercase tracking-[0.2em] text-xs text-muted-foreground;
   }
   .label-system-accent {
-    @apply font-heading uppercase tracking-[0.18em] text-xs;
-    color: oklch(0.82 0.14 210);
+    @apply font-heading uppercase tracking-[0.2em] text-xs;
+    color: oklch(0.83 0.17 213);
+    text-shadow: 0 0 12px oklch(0.83 0.17 213 / 55%);
   }
   .heading-system {
     @apply font-heading uppercase tracking-wide;
   }
   .text-glow-cyan {
-    color: oklch(0.82 0.14 210);
-    text-shadow: 0 0 16px oklch(0.82 0.14 210 / 45%);
+    color: oklch(0.83 0.17 213);
+    text-shadow: 0 0 18px oklch(0.83 0.17 213 / 55%), 0 0 40px oklch(0.83 0.17 213 / 25%);
   }
   .text-glow-violet {
-    color: oklch(0.75 0.15 295);
-    text-shadow: 0 0 16px oklch(0.62 0.19 295 / 45%);
+    color: oklch(0.78 0.19 296);
+    text-shadow: 0 0 18px oklch(0.6 0.23 296 / 55%), 0 0 40px oklch(0.6 0.23 296 / 25%);
   }
 
-  /* XP / progress bar track + fill */
+  /* XP / progress bar track + fill — clipped ends to match the panel language */
   .xp-track {
-    @apply relative h-2.5 w-full overflow-hidden rounded-full bg-muted;
-    box-shadow: 0 0 0 1px oklch(0.82 0.14 210 / 12%) inset;
+    @apply relative h-2.5 w-full overflow-hidden bg-muted;
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+    box-shadow: 0 0 0 1px oklch(0.83 0.17 213 / 18%) inset;
   }
   .xp-fill {
-    @apply h-full rounded-full;
-    background: linear-gradient(90deg, oklch(0.7 0.17 255), oklch(0.82 0.14 210), oklch(0.75 0.16 175));
-    box-shadow: 0 0 12px 0 oklch(0.82 0.14 210 / 60%);
+    @apply relative h-full overflow-hidden;
+    background: linear-gradient(90deg, oklch(0.68 0.2 260), oklch(0.83 0.17 213), oklch(0.76 0.17 172));
+    box-shadow: 0 0 14px 0 oklch(0.83 0.17 213 / 70%);
+  }
+  .xp-fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 20%, oklch(1 0 0 / 45%) 50%, transparent 80%);
+    background-size: 200% 100%;
+    animation: xp-shimmer 2.4s ease-in-out infinite;
   }
 
   .scanline-divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, oklch(0.82 0.14 210 / 40%), transparent);
+    background: linear-gradient(90deg, transparent, oklch(0.83 0.17 213 / 50%), transparent);
   }
 }
 
@@ -177,4 +260,20 @@
 }
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes xp-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes hud-flicker {
+  0%, 100% { opacity: 1; }
+  8% { opacity: 0.75; }
+  10% { opacity: 1; }
+  92% { opacity: 1; }
+  94% { opacity: 0.8; }
+}
+.animate-hud-flicker {
+  animation: hud-flicker 3.2s ease-in-out infinite;
 }

@@ -21,6 +21,11 @@ const UserSchema = new Schema(
       enum: ["E", "D", "C", "B", "A", "S"],
       default: "E",
     },
+    /** The level the player has already seen the LEVEL UP celebration for.
+     * XP now lands via admin approval (possibly while the player isn't in
+     * the app), so we detect "level > lastSeenLevel" on their next visit
+     * instead of firing the modal from a live action response. */
+    lastSeenLevel: { type: Number, default: 1, min: 1 },
 
     currentStreak: { type: Number, default: 0, min: 0 },
     longestStreak: { type: Number, default: 0, min: 0 },

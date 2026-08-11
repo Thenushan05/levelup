@@ -28,16 +28,33 @@ export function QuestCompleteModal({
         if (!next) onClose();
       }}
     >
-      <DialogContent showCloseButton={false} className="system-panel system-panel-success max-w-sm border-0 text-center">
+      <DialogContent
+        showCloseButton={false}
+        className="system-panel system-panel-success max-w-sm overflow-hidden text-center"
+      >
         <DialogTitle className="sr-only">Quest Complete</DialogTitle>
         {data && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center gap-3 py-2"
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="relative flex flex-col items-center gap-3 py-3"
           >
-            <PartyPopper className="h-8 w-8 text-glow-cyan" />
-            <p className="label-system-accent tracking-[0.3em]">QUEST COMPLETE</p>
+            <motion.div
+              className="pointer-events-none absolute top-6 left-1/2 h-16 w-16 rounded-full"
+              style={{ x: "-50%", background: "var(--success)" }}
+              initial={{ scale: 0.3, opacity: 0.5, filter: "blur(10px)" }}
+              animate={{ scale: 2.4, opacity: 0 }}
+              transition={{ duration: 1.1, ease: "easeOut" }}
+            />
+            <motion.div
+              initial={{ scale: 0.5, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 220, damping: 12, delay: 0.05 }}
+            >
+              <PartyPopper className="h-9 w-9 text-glow-cyan" />
+            </motion.div>
+            <p className="label-system-accent tracking-[0.35em] text-success">QUEST COMPLETE</p>
             <p className="heading-system text-xl">{data.workout.workoutName.toUpperCase()}</p>
             <p className="heading-system text-sm text-success">
               {data.workout.completedExercises} / {data.workout.totalExercises} OBJECTIVES COMPLETE
@@ -53,13 +70,15 @@ export function QuestCompleteModal({
                 <p className="heading-system text-sm">{data.workout.completedSets}</p>
               </div>
               <div>
-                <p className="label-system">XP Earned</p>
+                <p className="label-system">XP Pending</p>
                 <p className="heading-system text-sm text-glow-cyan">+{data.xp}</p>
               </div>
             </div>
 
+            <p className="text-xs text-muted-foreground">Awaiting admin approval before it counts toward your level.</p>
+
             {data.weeklyQuestCompleted && (
-              <p className="heading-system text-xs text-glow-violet">WEEKLY QUEST COMPLETE — +100 XP</p>
+              <p className="heading-system text-xs text-glow-violet">WEEKLY QUEST COMPLETE — +100 XP PENDING</p>
             )}
             {data.achievements.length > 0 && (
               <p className="text-xs text-muted-foreground">
@@ -67,7 +86,7 @@ export function QuestCompleteModal({
               </p>
             )}
 
-            <Button onClick={onClose} className="mt-2 w-full heading-system tracking-widest">
+            <Button onClick={onClose} className="mt-2 w-full">
               CONTINUE
             </Button>
           </motion.div>

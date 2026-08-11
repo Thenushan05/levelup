@@ -7,16 +7,9 @@ import { SystemLabel } from "@/components/system/system-label";
 import { Button } from "@/components/ui/button";
 import { checkIn, type AttendanceStatusDTO } from "@/actions/attendance";
 import { formatTime } from "@/lib/dates";
-import { showAchievementToast, showErrorToast, showXpToast } from "@/lib/toast-system";
-import type { LevelUpResult } from "@/types";
+import { showAchievementToast, showErrorToast, showXpPendingToast } from "@/lib/toast-system";
 
-export function AttendanceCard({
-  initial,
-  onLevelUp,
-}: {
-  initial: AttendanceStatusDTO;
-  onLevelUp: (levelUp: LevelUpResult) => void;
-}) {
+export function AttendanceCard({ initial }: { initial: AttendanceStatusDTO }) {
   const [status, setStatus] = useState(initial);
   const [pending, startTransition] = useTransition();
 
@@ -25,9 +18,8 @@ export function AttendanceCard({
       try {
         const result = await checkIn();
         setStatus({ checkedIn: true, checkedInAt: result.checkedInAt });
-        showXpToast(10, "Gym Check-In");
+        showXpPendingToast(10, "Gym Check-In");
         result.achievementsUnlocked.forEach(showAchievementToast);
-        if (result.levelUp.leveledUp) onLevelUp(result.levelUp);
       } catch (err) {
         showErrorToast(err instanceof Error ? err.message : "Unable to check in.");
       }

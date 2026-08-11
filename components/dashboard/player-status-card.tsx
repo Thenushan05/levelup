@@ -6,7 +6,7 @@ import { RankBadge } from "@/components/system/badges";
 import type { PlayerStatusDTO } from "@/actions/player";
 
 export function PlayerStatusCard({ status }: { status: PlayerStatusDTO }) {
-  const { player } = status;
+  const { player, pendingXp } = status;
   return (
     <SystemPanel className="space-y-5">
       <div className="flex items-center justify-between">
@@ -23,6 +23,11 @@ export function PlayerStatusCard({ status }: { status: PlayerStatusDTO }) {
           <span className="label-system">RANK {player.rank}</span>
         </div>
         <XpBar xp={player.xp} requiredXp={player.requiredXp} />
+        {pendingXp > 0 && (
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            +{pendingXp} XP <span className="text-glow-violet">pending admin approval</span>
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-3 border-t border-border/60 pt-4 text-center">

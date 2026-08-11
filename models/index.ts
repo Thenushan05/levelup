@@ -7,3 +7,4 @@ export { DailyWorkout } from "./DailyWorkout";
 export { Achievement } from "./Achievement";
 export { UserAchievement } from "./UserAchievement";
 export { Notification } from "./Notification";
+export { PendingXpAward } from "./PendingXpAward";

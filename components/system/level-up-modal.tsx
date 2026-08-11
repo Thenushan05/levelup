@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,34 +22,80 @@ export function LevelUpModal({
         if (!next) onClose();
       }}
     >
-      <DialogContent showCloseButton={false} className="system-panel system-panel-violet max-w-sm border-0 text-center">
+      <DialogContent
+        showCloseButton={false}
+        className="system-panel system-panel-violet max-w-sm overflow-hidden text-center"
+      >
         <DialogTitle className="sr-only">Level Up</DialogTitle>
         {levelUp && (
-          <motion.div
-            initial={{ scale: 0.85, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", duration: 0.5 }}
-            className="flex flex-col items-center gap-4 py-4"
-          >
-            <Sparkles className="h-8 w-8 text-glow-violet" />
-            <p className="label-system-accent tracking-[0.3em]">LEVEL UP</p>
-            <div className="flex items-center gap-3 font-heading text-3xl">
-              <span className="text-muted-foreground">LV.{levelUp.fromLevel}</span>
-              <span className="text-glow-cyan">→</span>
-              <span className="text-glow-cyan">LV.{levelUp.toLevel}</span>
-            </div>
-            {levelUp.rankChanged && (
-              <p className="heading-system text-sm text-glow-violet">
-                RANK UP — {levelUp.toRank} RANK
-              </p>
-            )}
-            <p className="heading-system text-xs tracking-widest text-muted-foreground">
-              NEW LEVEL ACHIEVED
-            </p>
-            <Button onClick={onClose} className="mt-2 w-full heading-system tracking-widest">
-              CONTINUE
-            </Button>
-          </motion.div>
+          <div className="relative flex flex-col items-center gap-4 py-6">
+            {/* Expanding shockwave rings */}
+            <AnimatePresence>
+              {[0, 1, 2].map((i) => (
+                <motion.span
+                  key={i}
+                  className="pointer-events-none absolute top-1/2 left-1/2 h-20 w-20 rounded-full border"
+                  style={{ borderColor: "var(--secondary)", x: "-50%", y: "-50%" }}
+                  initial={{ scale: 0.4, opacity: 0.8 }}
+                  animate={{ scale: 3.2, opacity: 0 }}
+                  transition={{ duration: 1.4, delay: i * 0.25, ease: "easeOut", repeat: Infinity, repeatDelay: 0.4 }}
+                />
+              ))}
+            </AnimatePresence>
+
+            <motion.div
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 18 }}
+              className="relative flex flex-col items-center gap-4"
+            >
+              <motion.div
+                initial={{ rotate: -25, scale: 0.5 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.1 }}
+              >
+                <Sparkles className="h-10 w-10 text-glow-violet" />
+              </motion.div>
+
+              <p className="label-system-accent animate-hud-flicker tracking-[0.4em] text-glow-cyan">LEVEL UP</p>
+
+              <div className="flex items-center gap-3 font-heading text-4xl">
+                <span className="text-muted-foreground">LV.{levelUp.fromLevel}</span>
+                <motion.span
+                  className="text-glow-cyan"
+                  animate={{ x: [0, 4, 0] }}
+                  transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  →
+                </motion.span>
+                <motion.span
+                  className="text-glow-cyan"
+                  initial={{ scale: 1.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.3, type: "spring", stiffness: 300, damping: 14 }}
+                >
+                  LV.{levelUp.toLevel}
+                </motion.span>
+              </div>
+
+              {levelUp.rankChanged && (
+                <motion.p
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="heading-system text-sm text-glow-violet"
+                >
+                  RANK UP — {levelUp.toRank} RANK
+                </motion.p>
+              )}
+
+              <p className="heading-system text-xs tracking-widest text-muted-foreground">NEW LEVEL ACHIEVED</p>
+
+              <Button onClick={onClose} className="mt-2 w-full">
+                CONTINUE
+              </Button>
+            </motion.div>
+          </div>
         )}
       </DialogContent>
     </Dialog>

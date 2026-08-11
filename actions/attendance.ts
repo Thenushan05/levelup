@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { Attendance } from "@/models/Attendance";
 import { requireUserDoc } from "@/lib/session";
 import { todayKey, formatTime } from "@/lib/dates";
-import { applyXp, snapshotLevel, diffLevel, XP_VALUES } from "@/lib/xp";
+import { queueXpAward, XP_VALUES } from "@/lib/xp";
 import { checkAndUnlockAchievements } from "@/lib/achievements";
 import { notifyUserAndParty } from "@/lib/notify";
-import type { AchievementUnlockedDTO, LevelUpResult } from "@/types";
+import type { AchievementUnlockedDTO } from "@/types";
 
 export interface AttendanceStatusDTO {
   checkedIn: boolean;
@@ -25,12 +25,15 @@ export async function getTodayAttendance(): Promise<AttendanceStatusDTO> {
 
 export interface CheckInResult {
   checkedInAt: string;
-  xpAwarded: number;
-  levelUp: LevelUpResult;
+  xpPending: number;
   achievementsUnlocked: AchievementUnlockedDTO[];
 }
 
-/** Only one check-in per calendar day — enforced by the unique {userId, date} index. */
+/**
+ * Only one check-in per calendar day — enforced by the unique {userId, date}
+ * index. XP is queued for admin approval, not granted immediately (see
+ * lib/xp.ts's queueXpAward) — the check-in itself still records instantly.
+ */
 export async function checkIn(): Promise<CheckInResult> {
   const user = await requireUserDoc();
   const date = todayKey();
@@ -42,9 +45,8 @@ export async function checkIn(): Promise<CheckInResult> {
     throw new Error("You've already checked in today.");
   }
 
-  const before = snapshotLevel(user);
-  applyXp(user, XP_VALUES.GYM_CHECK_IN);
   user.lastCheckInDate = date;
+  await queueXpAward(user._id, XP_VALUES.GYM_CHECK_IN, "check_in", "Gym Check-In");
 
   const achievementsUnlocked = await checkAndUnlockAchievements(user);
   await user.save();
@@ -55,16 +57,14 @@ export async function checkIn(): Promise<CheckInResult> {
     "party_check_in",
     `${user.name} checked into the gym.`,
     formatTime(checkedInAt),
-    { xp: XP_VALUES.GYM_CHECK_IN }
+    { xp: XP_VALUES.GYM_CHECK_IN, pending: true }
   );
 
-  const levelUp = diffLevel(before, user);
   revalidatePath("/dashboard");
 
   return {
     checkedInAt: checkedInAt.toISOString(),
-    xpAwarded: XP_VALUES.GYM_CHECK_IN + achievementsUnlocked.reduce((s, a) => s + a.xpReward, 0),
-    levelUp,
+    xpPending: XP_VALUES.GYM_CHECK_IN + achievementsUnlocked.reduce((s, a) => s + a.xpReward, 0),
     achievementsUnlocked,
   };
 }

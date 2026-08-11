@@ -3,10 +3,11 @@ import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { XpBar } from "@/components/system/hud-progress";
 import { StatBar } from "@/components/progress/stat-bar";
+import { LevelUpReveal } from "@/components/system/level-up-reveal";
 import type { PlayerStatusDTO } from "@/actions/player";
 
 export function PlayerStatusView({ status }: { status: PlayerStatusDTO }) {
-  const { player, stats, nextRank, levelsToNextRank } = status;
+  const { player, stats, nextRank, levelsToNextRank, pendingXp } = status;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -22,6 +23,11 @@ export function PlayerStatusView({ status }: { status: PlayerStatusDTO }) {
         <div className="w-full max-w-xs">
           <XpBar xp={player.xp} requiredXp={player.requiredXp} />
         </div>
+        {pendingXp > 0 && (
+          <p className="text-xs text-muted-foreground">
+            +{pendingXp} XP <span className="text-glow-violet">pending admin approval</span>
+          </p>
+        )}
       </SystemPanel>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -37,6 +43,8 @@ export function PlayerStatusView({ status }: { status: PlayerStatusDTO }) {
         <StatBar label="Workout Completion" value={stats.workoutCompletion} />
         <StatBar label="Attendance" value={stats.attendance} />
       </SystemPanel>
+
+      <LevelUpReveal newLevelUp={status.newLevelUp} />
     </div>
   );
 }

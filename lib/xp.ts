@@ -1,5 +1,15 @@
+import type { Types } from "mongoose";
 import { getRankForLevel } from "@/lib/ranks";
+import { connectToDatabase } from "@/lib/mongodb";
+import { PendingXpAward } from "@/models/PendingXpAward";
 import type { LevelUpResult, Rank } from "@/types";
+
+export type XpReason =
+  | "check_in"
+  | "exercise_complete"
+  | "quest_complete"
+  | "weekly_quest_complete"
+  | "achievement_unlocked";
 
 /**
  * The entire leveling curve lives here so it's configurable in one place.
@@ -82,4 +92,22 @@ export function diffLevel<T extends XpMutable>(
     toRank: user.rank as Rank,
     rankChanged: user.rank !== before.rank,
   };
+}
+
+/**
+ * Every XP-earning event goes through here instead of applyXp(): it queues
+ * a review item rather than touching the user's xp/level, so a coach/admin
+ * has to approve it (see actions/approvals.ts) before it counts. Progress
+ * state (set/exercise/quest completion, streaks, totals) is NOT gated —
+ * only the XP number is held back.
+ */
+export async function queueXpAward(
+  userId: Types.ObjectId | string,
+  amount: number,
+  reason: XpReason,
+  title: string
+): Promise<void> {
+  if (amount <= 0) return;
+  await connectToDatabase();
+  await PendingXpAward.create({ userId, amount, reason, title });
 }

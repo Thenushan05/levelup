@@ -5,18 +5,18 @@ import { DailyWorkout } from "@/models/DailyWorkout";
 import { WorkoutTemplate } from "@/models/WorkoutTemplate";
 import { requireUserDoc } from "@/lib/session";
 import { todayKey, dayOfWeekFromKey, weekRange, isoWeekKey } from "@/lib/dates";
-import { applyXp, snapshotLevel, diffLevel, XP_VALUES } from "@/lib/xp";
+import { queueXpAward, XP_VALUES } from "@/lib/xp";
 import { checkAndUnlockAchievements } from "@/lib/achievements";
 import { recomputeStreak } from "@/lib/streak";
 import { toDailyWorkoutDTO } from "@/lib/dto";
 import { notifyUserAndParty, notifyUser } from "@/lib/notify";
 import { updateSetSchema, exerciseNotesSchema, type UpdateSetInput, type ExerciseNotesInput } from "@/lib/validations/workout";
-import type { AchievementUnlockedDTO, DailyWorkoutDTO, LevelUpResult } from "@/types";
+import type { AchievementUnlockedDTO, DailyWorkoutDTO } from "@/types";
 
 export interface QuestActionResult {
   workout: DailyWorkoutDTO;
-  xpAwarded: number;
-  levelUp: LevelUpResult;
+  /** Not yet credited — an admin must approve it (see actions/approvals.ts) before it lands on the player's level/XP. */
+  xpPending: number;
   achievementsUnlocked: AchievementUnlockedDTO[];
   weeklyQuestCompleted: boolean;
 }
@@ -123,7 +123,7 @@ async function checkWeeklyQuestCompletion(
 
   if (completedCount < requiredDates.length) return false;
 
-  applyXp(user, XP_VALUES.WEEKLY_QUEST_COMPLETE);
+  await queueXpAward(user._id, XP_VALUES.WEEKLY_QUEST_COMPLETE, "weekly_quest_complete", "Weekly Quest");
   user.lastWeeklyQuestClaimedWeek = weekKey;
   user.weeklyQuestsCompletedCount += 1;
   return true;
@@ -131,8 +131,10 @@ async function checkWeeklyQuestCompletion(
 
 /**
  * The one write path for logging a set. Idempotent XP: an exercise only
- * awards its +5 XP on the not-yet-awarded -> complete transition, and a
- * quest only awards its +50 XP once (guarded by status !== 'complete').
+ * queues its +5 XP on the not-yet-awarded -> complete transition, and a
+ * quest only queues its +50 XP once (guarded by status !== 'complete').
+ * Every queued amount sits as a PendingXpAward until an admin approves it —
+ * completion state (checkmarks, streaks, totals) still updates immediately.
  */
 export async function updateSet(input: UpdateSetInput): Promise<QuestActionResult> {
   const parsed = updateSetSchema.parse(input);
@@ -161,8 +163,7 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
     set.completedAt = null;
   }
 
-  const before = snapshotLevel(user);
-  let xpThisCall = 0;
+  let xpPending = 0;
   const achievementsUnlocked: AchievementUnlockedDTO[] = [];
   let weeklyQuestCompleted = false;
 
@@ -172,10 +173,11 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
 
   if (exercise.status === "complete" && !exercise.xpAwarded) {
     exercise.xpAwarded = true;
-    applyXp(user, XP_VALUES.EXERCISE_COMPLETE);
-    xpThisCall += XP_VALUES.EXERCISE_COMPLETE;
-    await notifyUser(user._id.toString(), "objective_complete", "Objective Complete", exercise.name, {
+    await queueXpAward(user._id, XP_VALUES.EXERCISE_COMPLETE, "exercise_complete", exercise.name);
+    xpPending += XP_VALUES.EXERCISE_COMPLETE;
+    await notifyUser(user._id.toString(), "objective_complete", "Objective Complete", `${exercise.name} · +${XP_VALUES.EXERCISE_COMPLETE} XP pending approval`, {
       xp: XP_VALUES.EXERCISE_COMPLETE,
+      pending: true,
     });
   }
 
@@ -194,8 +196,8 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
       workout.status = "complete";
       workout.completedAt = new Date();
       workout.xpEarned = XP_VALUES.WORKOUT_COMPLETE;
-      applyXp(user, XP_VALUES.WORKOUT_COMPLETE);
-      xpThisCall += XP_VALUES.WORKOUT_COMPLETE;
+      await queueXpAward(user._id, XP_VALUES.WORKOUT_COMPLETE, "quest_complete", workout.workoutName);
+      xpPending += XP_VALUES.WORKOUT_COMPLETE;
 
       user.totalWorkouts += 1;
       if (!user.firstWorkoutCompletedAt) user.firstWorkoutCompletedAt = new Date();
@@ -205,26 +207,30 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
       const weeklyCompleted = await checkWeeklyQuestCompletion(user, workout.date);
       if (weeklyCompleted) {
         weeklyQuestCompleted = true;
-        xpThisCall += XP_VALUES.WEEKLY_QUEST_COMPLETE;
+        xpPending += XP_VALUES.WEEKLY_QUEST_COMPLETE;
       }
 
       const unlocked = await checkAndUnlockAchievements(user);
       achievementsUnlocked.push(...unlocked);
-      xpThisCall += unlocked.reduce((sum, a) => sum + a.xpReward, 0);
+      xpPending += unlocked.reduce((sum, a) => sum + a.xpReward, 0);
 
       await notifyUserAndParty(
         { id: user._id.toString(), name: user.name },
         "quest_complete",
         "party_quest_complete",
         `${user.name} completed ${workout.workoutName}.`,
-        `${workout.completedExercises}/${workout.totalExercises} objectives`,
-        { xp: XP_VALUES.WORKOUT_COMPLETE, workoutId: workout._id.toString() }
+        `${workout.completedExercises}/${workout.totalExercises} objectives · +${XP_VALUES.WORKOUT_COMPLETE} XP pending approval`,
+        { xp: XP_VALUES.WORKOUT_COMPLETE, workoutId: workout._id.toString(), pending: true }
       );
 
       if (weeklyCompleted) {
-        await notifyUser(user._id.toString(), "weekly_quest_complete", "Weekly Quest Complete", "", {
-          xp: XP_VALUES.WEEKLY_QUEST_COMPLETE,
-        });
+        await notifyUser(
+          user._id.toString(),
+          "weekly_quest_complete",
+          "Weekly Quest Complete",
+          `+${XP_VALUES.WEEKLY_QUEST_COMPLETE} XP pending approval`,
+          { xp: XP_VALUES.WEEKLY_QUEST_COMPLETE, pending: true }
+        );
       }
       for (const a of unlocked) {
         await notifyUserAndParty(
@@ -232,25 +238,13 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
           "achievement_unlocked",
           "party_achievement",
           `${user.name} unlocked ${a.title}.`,
-          a.description,
-          { xp: a.xpReward, key: a.key }
+          `${a.description} · +${a.xpReward} XP pending approval`,
+          { xp: a.xpReward, key: a.key, pending: true }
         );
       }
     } else if (workout.completedExercises > 0 || workout.completedSets > 0) {
       workout.status = "in_progress";
     }
-  }
-
-  const levelUp = diffLevel(before, user);
-  if (levelUp.leveledUp) {
-    await notifyUserAndParty(
-      { id: user._id.toString(), name: user.name },
-      "level_up",
-      "party_level_up",
-      `${user.name} reached Level ${levelUp.toLevel}.`,
-      levelUp.rankChanged ? `Rank up: ${levelUp.toRank} Rank` : "",
-      { fromLevel: levelUp.fromLevel, toLevel: levelUp.toLevel }
-    );
   }
 
   await workout.save();
@@ -261,8 +255,7 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
 
   return {
     workout: toDailyWorkoutDTO(workout.toObject()),
-    xpAwarded: xpThisCall,
-    levelUp,
+    xpPending,
     achievementsUnlocked,
     weeklyQuestCompleted,
   };

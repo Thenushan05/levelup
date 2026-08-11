@@ -1,7 +1,8 @@
 import { Achievement } from "@/models/Achievement";
 import { UserAchievement } from "@/models/UserAchievement";
 import { Attendance } from "@/models/Attendance";
-import { applyXp } from "@/lib/xp";
+import { connectToDatabase } from "@/lib/mongodb";
+import { queueXpAward } from "@/lib/xp";
 import type { AchievementUnlockedDTO } from "@/types";
 import type { HydratedDocument } from "mongoose";
 import type { UserDoc } from "@/models/User";
@@ -223,6 +224,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
 ];
 
 export async function ensureAchievementsSeeded() {
+  await connectToDatabase();
   await Promise.all(
     ACHIEVEMENT_DEFINITIONS.map((def) =>
       Achievement.findOneAndUpdate(
@@ -264,9 +266,10 @@ function meetsCriteria(def: AchievementDefinition, stats: UserStats): boolean {
 }
 
 /**
- * Checks every achievement the user hasn't unlocked yet, unlocks any that
- * now qualify, awards their XP (mutating the passed-in user doc — caller
- * saves once), and returns the list to show as unlock toasts.
+ * Checks every achievement the user hasn't unlocked yet and unlocks any that
+ * now qualify (the badge itself shows immediately). Its XP reward is queued
+ * for admin approval rather than applied — see queueXpAward. Returns the
+ * list to show as unlock toasts.
  */
 export async function checkAndUnlockAchievements(
   user: HydratedDocument<UserDoc>
@@ -302,7 +305,7 @@ export async function checkAndUnlockAchievements(
       achievementId: achievement._id,
       unlockedAt: new Date(),
     });
-    applyXp(user, achievement.xpReward);
+    await queueXpAward(user._id, achievement.xpReward, "achievement_unlocked", achievement.title);
 
     newlyUnlocked.push({
       key: achievement.key,

@@ -3,11 +3,12 @@
 import { DailyWorkout } from "@/models/DailyWorkout";
 import { Attendance } from "@/models/Attendance";
 import { WorkoutTemplate } from "@/models/WorkoutTemplate";
+import { PendingXpAward } from "@/models/PendingXpAward";
 import { requireUserDoc } from "@/lib/session";
 import { toPlayerSummary } from "@/lib/dto";
-import { getRankProgress } from "@/lib/ranks";
+import { getRankForLevel, getRankProgress } from "@/lib/ranks";
 import { addDays, dayOfWeekFromKey, todayKey } from "@/lib/dates";
-import type { PlayerSummaryDTO, Rank } from "@/types";
+import type { LevelUpResult, PlayerSummaryDTO, Rank } from "@/types";
 
 export interface PlayerStatsDTO {
   consistency: number;
@@ -72,15 +73,40 @@ export interface PlayerStatusDTO {
   rank: Rank;
   nextRank: Rank | null;
   levelsToNextRank: number | null;
+  /** Queued XP awaiting admin approval — not yet reflected in player.xp/level. */
+  pendingXp: number;
+  /**
+   * Set when the player's level has moved past what they've last
+   * acknowledged seeing — since XP now lands via admin approval (possibly
+   * while they're not in the app), this is how the LEVEL UP celebration
+   * still gets shown, just on their next visit instead of in the moment.
+   */
+  newLevelUp: LevelUpResult | null;
 }
 
 export async function getPlayerStatus(): Promise<PlayerStatusDTO> {
   const user = await requireUserDoc();
-  const stats = await computeStats(
-    user._id.toString(),
-    user.activeTemplateId ? user.activeTemplateId.toString() : null
-  );
+  const [stats, pendingRows] = await Promise.all([
+    computeStats(user._id.toString(), user.activeTemplateId ? user.activeTemplateId.toString() : null),
+    PendingXpAward.aggregate([
+      { $match: { userId: user._id, status: "pending" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]),
+  ]);
   const rankProgress = getRankProgress(user.level);
+
+  let newLevelUp: LevelUpResult | null = null;
+  if (user.level > user.lastSeenLevel) {
+    const fromRank = getRankForLevel(user.lastSeenLevel);
+    newLevelUp = {
+      leveledUp: true,
+      fromLevel: user.lastSeenLevel,
+      toLevel: user.level,
+      fromRank,
+      toRank: user.rank as Rank,
+      rankChanged: fromRank !== user.rank,
+    };
+  }
 
   return {
     player: toPlayerSummary(user),
@@ -88,5 +114,16 @@ export async function getPlayerStatus(): Promise<PlayerStatusDTO> {
     rank: rankProgress.rank,
     nextRank: rankProgress.nextRank,
     levelsToNextRank: rankProgress.levelsToNextRank,
+    pendingXp: pendingRows[0]?.total ?? 0,
+    newLevelUp,
   };
+}
+
+/** Marks the LEVEL UP celebration as seen so it doesn't show again on the next visit. */
+export async function acknowledgeLevelUp(toLevel: number): Promise<void> {
+  const user = await requireUserDoc();
+  if (toLevel > user.lastSeenLevel) {
+    user.lastSeenLevel = Math.min(toLevel, user.level);
+    await user.save();
+  }
 }

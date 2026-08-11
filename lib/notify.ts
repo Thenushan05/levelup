@@ -1,5 +1,6 @@
 import { Notification } from "@/models/Notification";
 import { GymGroup } from "@/models/GymGroup";
+import { connectToDatabase } from "@/lib/mongodb";
 import type { NotificationType } from "@/types";
 
 export async function notifyUser(
@@ -9,6 +10,7 @@ export async function notifyUser(
   message = "",
   meta: Record<string, unknown> = {}
 ) {
+  await connectToDatabase();
   await Notification.create({ userId, type, title, message, meta });
 }
 
@@ -25,6 +27,7 @@ export async function notifyUserAndParty(
   message = "",
   meta: Record<string, unknown> = {}
 ) {
+  await connectToDatabase();
   await Notification.create({ userId: actor.id, type: personalType, title, message, meta });
 
   const groups = await GymGroup.find({ "members.userId": actor.id }).select("_id").lean();

@@ -10,16 +10,21 @@ export class UnauthorizedError extends Error {
   }
 }
 
-/** Every protected server action starts here. Never trust a userId from the client. */
+/**
+ * Every protected server action starts here. Never trust a userId from the
+ * client. Also guarantees the Mongoose connection is established — callers
+ * that only need the id (not requireUserDoc()) still go on to query models
+ * directly, and our connection is opened with `bufferCommands: false`, which
+ * throws instead of queueing a query issued before `connect()` resolves.
+ */
 export async function requireUserId(): Promise<string> {
-  const session = await auth();
+  const [session] = await Promise.all([auth(), connectToDatabase()]);
   if (!session?.user?.id) throw new UnauthorizedError();
   return session.user.id;
 }
 
 export async function requireUserDoc(): Promise<HydratedDocument<UserDoc>> {
   const userId = await requireUserId();
-  await connectToDatabase();
   const user = await User.findById(userId);
   if (!user) throw new UnauthorizedError();
   return user;

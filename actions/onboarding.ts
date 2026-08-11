@@ -3,9 +3,11 @@
 import { connectToDatabase } from "@/lib/mongodb";
 import { ensureSeeded } from "@/lib/seed";
 import { WorkoutTemplate } from "@/models/WorkoutTemplate";
+import { DailyWorkout } from "@/models/DailyWorkout";
 import { requireUserDoc } from "@/lib/session";
 import { onboardingSchema, type OnboardingInput } from "@/lib/validations/onboarding";
 import { toPlayerSummary } from "@/lib/dto";
+import { todayKey } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import type { DayType } from "@/types";
 
@@ -78,6 +80,7 @@ export interface RoutineDayDTO {
 }
 
 export interface ActiveRoutineDTO {
+  slug: string;
   name: string;
   description: string;
   schedule: RoutineDayDTO[];
@@ -91,6 +94,7 @@ export async function getActiveRoutineDetail(): Promise<ActiveRoutineDTO | null>
   if (!template) return null;
 
   return {
+    slug: template.slug,
     name: template.name,
     description: template.description,
     schedule: template.schedule.map((d) => ({
@@ -108,4 +112,51 @@ export async function getActiveRoutineDetail(): Promise<ActiveRoutineDTO | null>
       })),
     })),
   };
+}
+
+/**
+ * Lets an onboarded player switch their active routine to any available
+ * template at any time — not just during onboarding.
+ *
+ * Today's quest updates immediately to match the new template IF nothing
+ * has been logged on it yet (untouched, not_started, no sets). If you've
+ * already checked in, opened an exercise, or completed anything today,
+ * that record is left exactly as it is — switching never discards real
+ * progress. Quest-log history is never touched either way.
+ */
+export async function switchTemplate(templateSlug: string) {
+  const user = await requireUserDoc();
+  await ensureSeeded();
+
+  const template = await WorkoutTemplate.findOne({ slug: templateSlug });
+  if (!template) {
+    return { success: false as const, error: "That routine could not be found." };
+  }
+
+  user.activeTemplateId = template._id;
+  user.daysPerWeek = template.daysPerWeek;
+  await user.save();
+
+  const today = todayKey();
+  const todaysWorkout = await DailyWorkout.findOne({ userId: user._id, date: today });
+
+  let todayRegenerated = false;
+  let todayKeptProgress = false;
+
+  if (todaysWorkout) {
+    const untouched =
+      todaysWorkout.completedExercises === 0 && todaysWorkout.completedSets === 0 && !todaysWorkout.startedAt;
+    if (untouched) {
+      await DailyWorkout.deleteOne({ _id: todaysWorkout._id });
+      todayRegenerated = true;
+    } else {
+      todayKeptProgress = true;
+    }
+  }
+
+  revalidatePath("/routine");
+  revalidatePath("/dashboard");
+  revalidatePath("/quest");
+
+  return { success: true as const, player: toPlayerSummary(user), todayRegenerated, todayKeptProgress };
 }

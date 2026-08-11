@@ -1,17 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk, Inter } from "next/font/google";
+import { Orbitron, Rajdhani } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers/providers";
 
-const fontDisplay = Space_Grotesk({
+// Orbitron: the geometric, heavy-set sci-fi face for the "System" chrome —
+// headers, labels, numbers. Rajdhani: a technical-but-readable body face so
+// paragraphs of copy don't fight the display font. Neither is tied to any
+// anime/game IP — both are open Google Fonts widely used for HUD styling.
+const fontDisplay = Orbitron({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["600", "700", "800", "900"],
 });
 
-const fontBody = Inter({
+const fontBody = Rajdhani({
   variable: "--font-body",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
