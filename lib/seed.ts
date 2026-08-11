@@ -41,6 +41,10 @@ export const EXERCISE_CATALOG: CatalogExercise[] = [
   { slug: "walking-lunges", name: "Walking Lunges", muscleGroup: "Legs", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 10 },
   { slug: "leg-extension", name: "Leg Extension", muscleGroup: "Legs", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 15 },
   { slug: "leg-raise", name: "Leg Raise", muscleGroup: "Core", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 15 },
+
+  { slug: "split-squat", name: "Split Squat", muscleGroup: "Legs", defaultSets: 2, defaultRepsMin: 8, defaultRepsMax: 12 },
+  { slug: "bench-press-machine-chest-press", name: "Bench Press / Machine Chest Press", muscleGroup: "Chest", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12 },
+  { slug: "pull-ups-assisted-pull-ups", name: "Pull Ups / Assisted Pull Ups", muscleGroup: "Back", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12 },
 ];
 
 interface ScheduleExerciseSpec {
@@ -59,59 +63,48 @@ interface ScheduleDaySpec {
   exercises: ScheduleExerciseSpec[];
 }
 
+// NSCA-style 3-day full-body split: balanced upper/lower work, core training,
+// moderate loads, sensible progression. Non-workout days carry no exercises —
+// their label alone drives the "rest" / "optional" UI copy (see daily-quest-card.tsx).
 export const SLEEPER_BUILD_SCHEDULE: ScheduleDaySpec[] = [
   {
     dayOfWeek: 1,
-    label: "Upper Body A",
+    label: "Full Body A",
     type: "workout",
     exercises: [
-      { slug: "bench-press", sets: 3, repsMin: 8, repsMax: 12 },
+      { slug: "goblet-squat", sets: 3, repsMin: 8, repsMax: 12 },
+      { slug: "bench-press-machine-chest-press", sets: 3, repsMin: 8, repsMax: 12 },
       { slug: "lat-pulldown", sets: 3, repsMin: 8, repsMax: 12 },
-      { slug: "incline-dumbbell-press", sets: 3, repsMin: 10, repsMax: 12 },
-      { slug: "seated-cable-row", sets: 3, repsMin: 10, repsMax: 12 },
-      { slug: "lateral-raise", sets: 3, repsMin: 12, repsMax: 15 },
-      { slug: "tricep-pushdown", sets: 2, repsMin: 10, repsMax: 15 },
-      { slug: "dumbbell-curl", sets: 2, repsMin: 10, repsMax: 15 },
-    ],
-  },
-  {
-    dayOfWeek: 2,
-    label: "Lower Body A",
-    type: "workout",
-    exercises: [
-      { slug: "squat", sets: 3, repsMin: 8, repsMax: 12 },
-      { slug: "romanian-deadlift", sets: 3, repsMin: 8, repsMax: 12 },
-      { slug: "leg-press", sets: 3, repsMin: 10, repsMax: 15 },
-      { slug: "leg-curl", sets: 3, repsMin: 10, repsMax: 15 },
-      { slug: "calf-raise", sets: 3, repsMin: 12, repsMax: 15 },
+      { slug: "romanian-deadlift", sets: 2, repsMin: 8, repsMax: 12 },
+      { slug: "lateral-raise", sets: 2, repsMin: 10, repsMax: 15 },
       { slug: "plank", sets: 3, repsMin: 30, repsMax: 60, repsUnit: "seconds" },
     ],
   },
-  { dayOfWeek: 3, label: "Recovery Day", type: "rest", exercises: [] },
+  { dayOfWeek: 2, label: "Light Activity", type: "optional", exercises: [] },
   {
-    dayOfWeek: 4,
-    label: "Upper Body B",
+    dayOfWeek: 3,
+    label: "Full Body B",
     type: "workout",
     exercises: [
-      { slug: "pull-ups", sets: 3, repsMin: 6, repsMax: 12 },
-      { slug: "shoulder-press", sets: 3, repsMin: 8, repsMax: 12 },
-      { slug: "chest-press", sets: 3, repsMin: 10, repsMax: 12 },
-      { slug: "one-arm-dumbbell-row", sets: 3, repsMin: 10, repsMax: 12 },
-      { slug: "rear-delt-fly", sets: 3, repsMin: 12, repsMax: 15 },
-      { slug: "hammer-curl", sets: 2, repsMin: 10, repsMax: 15 },
-      { slug: "overhead-tricep-extension", sets: 2, repsMin: 10, repsMax: 15 },
+      { slug: "leg-press", sets: 3, repsMin: 8, repsMax: 12 },
+      { slug: "incline-dumbbell-press", sets: 3, repsMin: 8, repsMax: 12 },
+      { slug: "seated-cable-row", sets: 3, repsMin: 8, repsMax: 12 },
+      { slug: "split-squat", sets: 2, repsMin: 8, repsMax: 12, perSide: true },
+      { slug: "dumbbell-curl", sets: 2, repsMin: 10, repsMax: 15 },
+      { slug: "tricep-pushdown", sets: 2, repsMin: 10, repsMax: 15 },
     ],
   },
+  { dayOfWeek: 4, label: "Recovery Day", type: "rest", exercises: [] },
   {
     dayOfWeek: 5,
-    label: "Lower Body B",
+    label: "Full Body C",
     type: "workout",
     exercises: [
-      { slug: "goblet-squat", sets: 3, repsMin: 10, repsMax: 12 },
-      { slug: "hip-thrust", sets: 3, repsMin: 8, repsMax: 12 },
-      { slug: "walking-lunges", sets: 3, repsMin: 10, repsMax: 10, perSide: true },
-      { slug: "leg-extension", sets: 3, repsMin: 10, repsMax: 15 },
-      { slug: "calf-raise", sets: 3, repsMin: 12, repsMax: 15 },
+      { slug: "squat", sets: 3, repsMin: 8, repsMax: 12 },
+      { slug: "pull-ups-assisted-pull-ups", sets: 3, repsMin: 8, repsMax: 12 },
+      { slug: "shoulder-press", sets: 3, repsMin: 8, repsMax: 12 },
+      { slug: "leg-curl", sets: 2, repsMin: 10, repsMax: 15 },
+      { slug: "calf-raise", sets: 2, repsMin: 10, repsMax: 15 },
       { slug: "leg-raise", sets: 3, repsMin: 10, repsMax: 15 },
     ],
   },
@@ -161,8 +154,9 @@ export async function ensureSeeded(): Promise<void> {
       $setOnInsert: {
         name: "Sleeper Build",
         slug: "sleeper-build",
-        description: "Balanced 4-day strength and fitness routine.",
-        daysPerWeek: 4,
+        description:
+          "NSCA-style 3-day full-body routine — balanced upper/lower work, core training, moderate loads, and sensible progression.",
+        daysPerWeek: 3,
         isBuiltIn: true,
         schedule,
       },
