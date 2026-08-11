@@ -8,6 +8,7 @@ import { requireUserDoc } from "@/lib/session";
 import { toPlayerSummary } from "@/lib/dto";
 import { getRankForLevel, getRankProgress } from "@/lib/ranks";
 import { addDays, dayOfWeekFromKey, todayKey } from "@/lib/dates";
+import { calculateBmi, type BmiResult } from "@/lib/nutrition";
 import type { LevelUpResult, PlayerSummaryDTO, Rank } from "@/types";
 
 export interface PlayerStatsDTO {
@@ -78,6 +79,8 @@ export interface PlayerStatusDTO {
   /** False for anyone who onboarded before body stats existed, or skipped
    * filling them in via Settings — gates the Diet & Body calculations. */
   hasBodyStats: boolean;
+  /** Null until weight + height are on file — see hasBodyStats. */
+  bmi: BmiResult | null;
   /**
    * Set when the player's level has moved past what they've last
    * acknowledged seeing — since XP now lands via admin approval (possibly
@@ -111,6 +114,8 @@ export async function getPlayerStatus(): Promise<PlayerStatusDTO> {
     };
   }
 
+  const hasBodyStats = user.weightKg != null && user.heightCm != null && user.age != null && !!user.biologicalSex;
+
   return {
     player: toPlayerSummary(user),
     stats,
@@ -118,7 +123,8 @@ export async function getPlayerStatus(): Promise<PlayerStatusDTO> {
     nextRank: rankProgress.nextRank,
     levelsToNextRank: rankProgress.levelsToNextRank,
     pendingXp: pendingRows[0]?.total ?? 0,
-    hasBodyStats: user.weightKg != null && user.heightCm != null && user.age != null && !!user.biologicalSex,
+    hasBodyStats,
+    bmi: hasBodyStats ? calculateBmi(user.weightKg!, user.heightCm!) : null,
     newLevelUp,
   };
 }
