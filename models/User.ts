@@ -40,6 +40,16 @@ const UserSchema = new Schema(
     activeTemplateId: { type: Schema.Types.ObjectId, ref: "WorkoutTemplate", default: null },
     onboardingCompleted: { type: Boolean, default: false },
 
+    /** Body stats — canonical storage is always metric (kg/cm) regardless of
+     * unitSystem, which only controls how they're displayed/entered. Needed
+     * for real BMI/BMR/TDEE math (see lib/nutrition.ts), not just cosmetic. */
+    weightKg: { type: Number, default: null, min: 20, max: 400 },
+    heightCm: { type: Number, default: null, min: 100, max: 250 },
+    age: { type: Number, default: null, min: 13, max: 100 },
+    biologicalSex: { type: String, enum: ["male", "female", "unspecified"], default: null },
+    fitnessGoal: { type: String, enum: ["lose_weight", "maintain", "gain_muscle"], default: null },
+    unitSystem: { type: String, enum: ["metric", "imperial"], default: "metric" },
+
     lastWeeklyQuestClaimedWeek: { type: String, default: null },
     weeklyQuestsCompletedCount: { type: Number, default: 0 },
     lastCheckInDate: { type: String, default: null },

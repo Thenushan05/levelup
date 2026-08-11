@@ -12,7 +12,23 @@ export default async function SettingsPage() {
   if (!session?.user?.id) redirect("/login");
 
   await connectToDatabase();
-  const user = await User.findById(session.user.id).select("name email image").lean();
+  const user = await User.findById(session.user.id)
+    .select("name email image weightKg heightCm age biologicalSex fitnessGoal unitSystem")
+    .lean();
 
-  return <SettingsView name={user?.name ?? ""} email={user?.email ?? ""} image={user?.image ?? ""} />;
+  return (
+    <SettingsView
+      name={user?.name ?? ""}
+      email={user?.email ?? ""}
+      image={user?.image ?? ""}
+      bodyStats={{
+        weightKg: user?.weightKg ?? null,
+        heightCm: user?.heightCm ?? null,
+        age: user?.age ?? null,
+        biologicalSex: (user?.biologicalSex as "male" | "female" | "unspecified" | null) ?? null,
+        fitnessGoal: (user?.fitnessGoal as "lose_weight" | "maintain" | "gain_muscle" | null) ?? null,
+        unitSystem: (user?.unitSystem as "metric" | "imperial") ?? "metric",
+      }}
+    />
+  );
 }

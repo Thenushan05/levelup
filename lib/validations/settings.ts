@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { bodyStatsSchema } from "@/lib/validations/onboarding";
+
+export const updateBodyStatsSchema = bodyStatsSchema;
+export type UpdateBodyStatsInput = z.infer<typeof updateBodyStatsSchema>;
 
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(60),
