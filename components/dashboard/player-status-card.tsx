@@ -1,12 +1,21 @@
-import { Flame, Dumbbell, Trophy } from "lucide-react";
+import Link from "next/link";
+import { Flame, Dumbbell, Trophy, Scale } from "lucide-react";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel } from "@/components/system/system-label";
 import { XpBar } from "@/components/system/hud-progress";
 import { RankBadge } from "@/components/system/badges";
+import { cn } from "@/lib/utils";
 import type { PlayerStatusDTO } from "@/actions/player";
 
+const BMI_CATEGORY_TONE: Record<string, string> = {
+  underweight: "text-glow-violet",
+  normal: "text-glow-cyan",
+  overweight: "text-amber-400",
+  obese: "text-destructive",
+};
+
 export function PlayerStatusCard({ status }: { status: PlayerStatusDTO }) {
-  const { player, pendingXp } = status;
+  const { player, pendingXp, bmi } = status;
   return (
     <SystemPanel className="space-y-5">
       <div className="flex items-center justify-between">
@@ -30,7 +39,7 @@ export function PlayerStatusCard({ status }: { status: PlayerStatusDTO }) {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-3 border-t border-border/60 pt-4 text-center">
+      <div className={cn("grid gap-3 border-t border-border/60 pt-4 text-center", bmi ? "grid-cols-4" : "grid-cols-3")}>
         <div>
           <Flame className="mx-auto mb-1 h-4 w-4 text-glow-cyan" />
           <p className="heading-system text-lg">{player.currentStreak}</p>
@@ -46,6 +55,13 @@ export function PlayerStatusCard({ status }: { status: PlayerStatusDTO }) {
           <p className="heading-system text-lg">{player.longestStreak}</p>
           <SystemLabel>Best</SystemLabel>
         </div>
+        {bmi && (
+          <Link href="/diet">
+            <Scale className={cn("mx-auto mb-1 h-4 w-4", BMI_CATEGORY_TONE[bmi.category])} />
+            <p className={cn("heading-system text-lg", BMI_CATEGORY_TONE[bmi.category])}>{bmi.bmi}</p>
+            <SystemLabel>BMI</SystemLabel>
+          </Link>
+        )}
       </div>
     </SystemPanel>
   );

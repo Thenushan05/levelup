@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { LogOut, Shield, ClipboardCheck, Menu } from "lucide-react";
+import { LogOut, Shield, ClipboardCheck, Menu, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/nav";
 import { RankBadge } from "@/components/system/badges";
@@ -94,6 +94,9 @@ function AdminNavLinks({
       >
         Approvals
       </NavLink>
+      <NavLink href="/admin/users" active={isActive("/admin/users")} icon={UserCog} tone="violet" onClick={onNavigate}>
+        Users
+      </NavLink>
     </div>
   );
 }
@@ -152,15 +155,21 @@ export function DashboardShell({
         </Link>
         <p className="label-system mb-7 px-3 text-[10px]">Level Up Your Training</p>
 
-        <nav className="flex-1 space-y-1">
-          {NAV_ITEMS.map((item) => (
-            <NavLink key={item.href} href={item.href} active={isActive(item.href)} icon={item.icon}>
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+        {/* This middle section scrolls on its own when the nav list (main +
+            admin) is taller than the viewport — logo/tagline above and
+            Logout below stay pinned, so nothing (like the Admin block) can
+            ever get silently pushed off the bottom of a shorter screen. */}
+        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
+          <nav className="space-y-1">
+            {NAV_ITEMS.map((item) => (
+              <NavLink key={item.href} href={item.href} active={isActive(item.href)} icon={item.icon}>
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
 
-        {isAdmin && <AdminNavLinks isActive={isActive} pendingApprovalCount={pendingApprovalCount} />}
+          {isAdmin && <AdminNavLinks isActive={isActive} pendingApprovalCount={pendingApprovalCount} />}
+        </div>
 
         <button
           type="button"
