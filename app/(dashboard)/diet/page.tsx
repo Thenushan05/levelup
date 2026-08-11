@@ -140,9 +140,17 @@ export default async function DietPage() {
             {profile.todayEstimate && (
               <div className="rounded-lg border border-border p-3">
                 <p className="text-xs text-muted-foreground">Today — {profile.todayEstimate.workoutName}</p>
-                <p className="heading-system text-lg text-glow-cyan">~{profile.todayEstimate.kcal} kcal</p>
+                <p className="heading-system text-lg text-glow-cyan">
+                  {profile.todayEstimate.phase === "projected" ? "~" : ""}
+                  {profile.todayEstimate.kcal} kcal
+                </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Estimated from {profile.todayEstimate.minutes} min at {profile.todayEstimate.met} MET — projected, not yet completed.
+                  {profile.todayEstimate.phase === "in_progress" &&
+                    `Burned so far — ${profile.todayEstimate.minutes} min of real elapsed time since you started, still climbing as you log sets.`}
+                  {profile.todayEstimate.phase === "projected" &&
+                    `Projected from ${profile.todayEstimate.minutes} min at ${profile.todayEstimate.met} MET — you haven't started this yet.`}
+                  {profile.todayEstimate.phase === "completed" &&
+                    `Final total — ${profile.todayEstimate.minutes} min actual session duration.`}
                 </p>
               </div>
             )}

@@ -1,14 +1,21 @@
 import Link from "next/link";
-import { Swords, Moon, Sparkle } from "lucide-react";
+import { Swords, Moon, Sparkle, Flame } from "lucide-react";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel } from "@/components/system/system-label";
 import { HudProgress } from "@/components/system/hud-progress";
 import { EmptyState } from "@/components/system/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import type { WorkoutCalorieEstimate } from "@/lib/calories-burned";
 import type { DailyWorkoutDTO } from "@/types";
 
-export function DailyQuestCard({ quest }: { quest: DailyWorkoutDTO | null }) {
+export function DailyQuestCard({
+  quest,
+  caloriesBurnedToday,
+}: {
+  quest: DailyWorkoutDTO | null;
+  caloriesBurnedToday: WorkoutCalorieEstimate | null;
+}) {
   if (!quest) {
     return (
       <EmptyState
@@ -74,6 +81,15 @@ export function DailyQuestCard({ quest }: { quest: DailyWorkoutDTO | null }) {
           {quest.completedExercises} / {quest.totalExercises} EXERCISES COMPLETED — {quest.progressPercentage}%
         </p>
       </div>
+      {caloriesBurnedToday && (
+        <div className="flex items-center gap-1.5 text-sm text-glow-cyan">
+          <Flame className="h-4 w-4" />
+          <span className="heading-system">{caloriesBurnedToday.kcal} KCAL</span>
+          <span className="text-xs text-muted-foreground">
+            {quest.status === "complete" ? "burned this session" : "burned so far — updates as you go"}
+          </span>
+        </div>
+      )}
       <Link href="/quest" className={cn(buttonVariants(), "w-full heading-system tracking-widest")}>
         {ctaLabel}
       </Link>

@@ -11,6 +11,7 @@ import { recomputeStreak } from "@/lib/streak";
 import { toDailyWorkoutDTO } from "@/lib/dto";
 import { notifyUserAndParty, notifyUser } from "@/lib/notify";
 import { updateSetSchema, exerciseNotesSchema, type UpdateSetInput, type ExerciseNotesInput } from "@/lib/validations/workout";
+import { caloriesBurnedSoFar, type WorkoutCalorieEstimate } from "@/lib/calories-burned";
 import type { AchievementUnlockedDTO, DailyWorkoutDTO } from "@/types";
 
 export interface QuestActionResult {
@@ -19,6 +20,9 @@ export interface QuestActionResult {
   xpPending: number;
   achievementsUnlocked: AchievementUnlockedDTO[];
   weeklyQuestCompleted: boolean;
+  /** Real elapsed-time calorie burn as of this action — null if body stats
+   * aren't on file yet. Climbs with every logged set, not just at the end. */
+  caloriesBurnedToday: WorkoutCalorieEstimate | null;
 }
 
 /** Resolves (creating if needed) today's DailyWorkout from the user's active template. */
@@ -82,6 +86,23 @@ export async function getTodayQuest(): Promise<DailyWorkoutDTO | null> {
     const raced = await DailyWorkout.findOne({ userId: user._id, date }).lean();
     return raced ? toDailyWorkoutDTO(raced) : null;
   }
+}
+
+/** Today's calorie burn, for the dashboard — same real elapsed-time math as
+ * the exercise-detail page, so the figure matches wherever it's shown. */
+export async function getTodayCaloriesBurned(): Promise<WorkoutCalorieEstimate | null> {
+  const user = await requireUserDoc();
+  if (user.weightKg == null) return null;
+
+  const workout = await DailyWorkout.findOne({ userId: user._id, date: todayKey() }).lean();
+  if (!workout) return null;
+
+  return caloriesBurnedSoFar({
+    weightKg: user.weightKg,
+    type: workout.type,
+    startedAt: workout.startedAt ?? null,
+    asOf: workout.status === "complete" ? workout.completedAt ?? null : new Date(),
+  });
 }
 
 export async function startQuest(dailyWorkoutId: string): Promise<DailyWorkoutDTO | null> {
@@ -153,11 +174,13 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
     set = exercise.sets[exercise.sets.length - 1];
   }
 
+  const now = new Date();
+
   set.weight = parsed.weight;
   set.reps = parsed.reps;
   if (parsed.completed && !set.completed) {
     set.completed = true;
-    set.completedAt = new Date();
+    set.completedAt = now;
   } else if (!parsed.completed && set.completed) {
     set.completed = false;
     set.completedAt = null;
@@ -189,18 +212,18 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
   workout.progressPercentage =
     workout.totalSets > 0 ? Math.round((workout.completedSets / workout.totalSets) * 100) : 0;
 
-  if (!workout.startedAt) workout.startedAt = new Date();
+  if (!workout.startedAt) workout.startedAt = now;
 
   if (workout.status !== "complete") {
     if (workout.totalExercises > 0 && workout.completedExercises === workout.totalExercises) {
       workout.status = "complete";
-      workout.completedAt = new Date();
+      workout.completedAt = now;
       workout.xpEarned = XP_VALUES.WORKOUT_COMPLETE;
       await queueXpAward(user._id, XP_VALUES.WORKOUT_COMPLETE, "quest_complete", workout.workoutName);
       xpPending += XP_VALUES.WORKOUT_COMPLETE;
 
       user.totalWorkouts += 1;
-      if (!user.firstWorkoutCompletedAt) user.firstWorkoutCompletedAt = new Date();
+      if (!user.firstWorkoutCompletedAt) user.firstWorkoutCompletedAt = now;
 
       await recomputeStreak(user);
 
@@ -252,12 +275,24 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
 
   revalidatePath("/dashboard");
   revalidatePath("/quest");
+  revalidatePath("/diet");
+
+  const caloriesBurnedToday =
+    user.weightKg != null
+      ? caloriesBurnedSoFar({
+          weightKg: user.weightKg,
+          type: workout.type,
+          startedAt: workout.startedAt,
+          asOf: workout.completedAt ?? now,
+        })
+      : null;
 
   return {
     workout: toDailyWorkoutDTO(workout.toObject()),
     xpPending,
     achievementsUnlocked,
     weeklyQuestCompleted,
+    caloriesBurnedToday,
   };
 }
 
@@ -297,6 +332,7 @@ export interface ExerciseDetailDTO {
   exercise: DailyWorkoutDTO["exercises"][number];
   previousSets: { setNumber: number; weight: number | null; reps: number | null }[];
   previousDate: string | null;
+  caloriesBurnedToday: WorkoutCalorieEstimate | null;
 }
 
 export async function getExerciseDetail(
@@ -335,5 +371,15 @@ export async function getExerciseDetail(
   const dto = toDailyWorkoutDTO(workout);
   const exercise = dto.exercises.find((e) => e.id === exerciseEntryId)!;
 
-  return { workout: dto, exercise, previousSets, previousDate };
+  const caloriesBurnedToday =
+    user.weightKg != null
+      ? caloriesBurnedSoFar({
+          weightKg: user.weightKg,
+          type: workout.type,
+          startedAt: workout.startedAt ?? null,
+          asOf: workout.completedAt ?? new Date(),
+        })
+      : null;
+
+  return { workout: dto, exercise, previousSets, previousDate, caloriesBurnedToday };
 }

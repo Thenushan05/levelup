@@ -60,3 +60,35 @@ export function lightActivityCalorieRange(weightKg: number): { low: number; high
   const perMin = kcalPerMinute(MET_VALUES.LIGHT_ACTIVITY, weightKg);
   return { low: Math.round(perMin * 20), high: Math.round(perMin * 45) };
 }
+
+/**
+ * Real-time calorie burn "so far" for a workout that's still in progress —
+ * elapsed time between when it was started and `asOf` (pass the current
+ * moment for a live figure, or the timestamp of the action that just
+ * happened), at the same MET used for a finished workout. This is what
+ * lets the number climb as each set gets logged instead of only appearing
+ * once the whole workout is complete.
+ *
+ * Uses sub-minute precision for the kcal math itself (not the whole-minute
+ * rounding lib/dates's durationMinutes uses for display) — the very first
+ * set of a session is often logged well under a minute after starting, and
+ * rounding that down to "0 minutes" would wrongly report zero calories and
+ * make the live figure not appear at all until a full minute has passed.
+ */
+export function caloriesBurnedSoFar(params: {
+  weightKg: number;
+  type: "workout" | "rest" | "optional";
+  startedAt: Date | string | null;
+  asOf: Date | string | null;
+}): WorkoutCalorieEstimate | null {
+  if (params.type !== "workout" || !params.startedAt || !params.asOf) return null;
+
+  const startMs = new Date(params.startedAt).getTime();
+  const asOfMs = new Date(params.asOf).getTime();
+  if (Number.isNaN(startMs) || Number.isNaN(asOfMs) || asOfMs <= startMs) return null;
+
+  const preciseMinutes = (asOfMs - startMs) / 60000;
+  const met = MET_VALUES.RESISTANCE_TRAINING;
+  const kcal = Math.round(kcalPerMinute(met, params.weightKg) * preciseMinutes);
+  return { kcal, minutes: Math.round(preciseMinutes), isActualDuration: true, met };
+}

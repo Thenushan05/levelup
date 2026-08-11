@@ -15,11 +15,19 @@ import {
   type FitnessGoal,
   type UnitSystem,
 } from "@/lib/nutrition";
-import { estimateWorkoutCalories, lightActivityCalorieRange, type WorkoutCalorieEstimate } from "@/lib/calories-burned";
+import {
+  estimateWorkoutCalories,
+  caloriesBurnedSoFar,
+  lightActivityCalorieRange,
+  type WorkoutCalorieEstimate,
+} from "@/lib/calories-burned";
+
+export type CaloriePhase = "completed" | "in_progress" | "projected";
 
 export interface WorkoutCalorieRowDTO extends WorkoutCalorieEstimate {
   date: string;
   workoutName: string;
+  phase: CaloriePhase;
 }
 
 export interface DietProfileDTO {
@@ -76,17 +84,30 @@ export async function getDietProfile(): Promise<DietProfileDTO> {
 
     for (const w of workouts) {
       const isComplete = w.status === "complete";
-      const realMinutes = isComplete ? computeDurationMinutes(w.startedAt ?? null, w.completedAt ?? null) : null;
-      const estimate = estimateWorkoutCalories({
-        weightKg: user.weightKg!,
-        type: w.type,
-        totalSets: w.totalSets,
-        durationMinutes: realMinutes,
-      });
-      if (!estimate) continue;
+      const isToday = w.date === today;
 
-      const row: WorkoutCalorieRowDTO = { date: w.date, workoutName: w.workoutName, ...estimate };
-      if (w.date === today && !isComplete) {
+      let estimate: WorkoutCalorieEstimate | null;
+      let phase: CaloriePhase;
+
+      if (isComplete) {
+        const realMinutes = computeDurationMinutes(w.startedAt ?? null, w.completedAt ?? null);
+        estimate = estimateWorkoutCalories({ weightKg: user.weightKg!, type: w.type, totalSets: w.totalSets, durationMinutes: realMinutes });
+        phase = "completed";
+      } else if (isToday && w.startedAt) {
+        // Real elapsed time so far — climbs as sets get logged, not a guess.
+        estimate = caloriesBurnedSoFar({ weightKg: user.weightKg!, type: w.type, startedAt: w.startedAt, asOf: new Date() });
+        phase = "in_progress";
+      } else if (isToday) {
+        // Not started yet — no real elapsed time exists, so this is a projection.
+        estimate = estimateWorkoutCalories({ weightKg: user.weightKg!, type: w.type, totalSets: w.totalSets, durationMinutes: null });
+        phase = "projected";
+      } else {
+        continue;
+      }
+
+      if (!estimate) continue;
+      const row: WorkoutCalorieRowDTO = { date: w.date, workoutName: w.workoutName, phase, ...estimate };
+      if (isToday) {
         todayEstimate = row;
       } else if (isComplete) {
         recentBurn.push(row);
