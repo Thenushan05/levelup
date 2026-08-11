@@ -9,6 +9,7 @@ import {
   Users,
   User,
   Settings,
+  Apple,
   type LucideIcon,
 } from "lucide-react";
 
@@ -30,5 +31,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/achievements", label: "Achievements", icon: Trophy },
   { href: "/party", label: "Party", icon: Users, mobileLabel: "PARTY", mobile: true },
   { href: "/player", label: "Profile", icon: User, mobileLabel: "PLAYER", mobile: true },
+  { href: "/diet", label: "Diet & Body", icon: Apple },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

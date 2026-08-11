@@ -8,9 +8,13 @@ import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel } from "@/components/system/system-label";
 import { HudProgress } from "@/components/system/hud-progress";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { lbsToKg, feetInchesToCm } from "@/lib/nutrition";
 import { activateTemplate, type TemplateSummaryDTO } from "@/actions/onboarding";
 import type { ExperienceLevel } from "@/types";
+import type { BiologicalSex, FitnessGoal, UnitSystem } from "@/lib/nutrition";
 
 const EXPERIENCE_OPTIONS: { value: ExperienceLevel; label: string; description: string }[] = [
   { value: "beginner", label: "Beginner", description: "New to structured training." },
@@ -18,8 +22,20 @@ const EXPERIENCE_OPTIONS: { value: ExperienceLevel; label: string; description: 
   { value: "experienced", label: "Experienced", description: "Years of structured training experience." },
 ];
 
+const SEX_OPTIONS: { value: BiologicalSex; label: string }[] = [
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+  { value: "unspecified", label: "Prefer not to say" },
+];
+
+const GOAL_OPTIONS: { value: FitnessGoal; label: string; description: string }[] = [
+  { value: "lose_weight", label: "Lose Weight", description: "Calorie target set below maintenance." },
+  { value: "maintain", label: "Maintain", description: "Calorie target at maintenance." },
+  { value: "gain_muscle", label: "Build Muscle", description: "Calorie target above maintenance." },
+];
+
 const DAYS_OPTIONS = [3, 4, 5];
-const STEPS = ["EXPERIENCE", "TRAINING DAYS", "ROUTINE"];
+const STEPS = ["EXPERIENCE", "BODY STATS", "TRAINING DAYS", "ROUTINE"];
 
 export function OnboardingWizard({
   playerName,
@@ -31,6 +47,16 @@ export function OnboardingWizard({
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [experience, setExperience] = useState<ExperienceLevel | null>(null);
+
+  const [unitSystem, setUnitSystem] = useState<UnitSystem>("metric");
+  const [weightInput, setWeightInput] = useState("");
+  const [heightCmInput, setHeightCmInput] = useState("");
+  const [heightFeetInput, setHeightFeetInput] = useState("");
+  const [heightInchesInput, setHeightInchesInput] = useState("");
+  const [ageInput, setAgeInput] = useState("");
+  const [biologicalSex, setBiologicalSex] = useState<BiologicalSex | null>(null);
+  const [fitnessGoal, setFitnessGoal] = useState<FitnessGoal | null>(null);
+
   const [daysPerWeek, setDaysPerWeek] = useState<number | null>(null);
   const [customDays, setCustomDays] = useState("");
   const [templateSlug, setTemplateSlug] = useState<string | null>(null);
@@ -38,11 +64,45 @@ export function OnboardingWizard({
   const [error, setError] = useState<string | null>(null);
   const [activated, setActivated] = useState(false);
 
+  const weightKg = (() => {
+    const n = Number(weightInput);
+    if (!weightInput || Number.isNaN(n) || n <= 0) return null;
+    return unitSystem === "metric" ? n : lbsToKg(n);
+  })();
+
+  const heightCm = (() => {
+    if (unitSystem === "metric") {
+      const n = Number(heightCmInput);
+      return heightCmInput && !Number.isNaN(n) && n > 0 ? n : null;
+    }
+    const feet = Number(heightFeetInput);
+    const inches = Number(heightInchesInput || "0");
+    if (!heightFeetInput || Number.isNaN(feet) || Number.isNaN(inches)) return null;
+    return feetInchesToCm(feet, inches);
+  })();
+
+  const age = (() => {
+    const n = Number(ageInput);
+    return ageInput && Number.isInteger(n) && n > 0 ? n : null;
+  })();
+
+  const bodyStatsValid = weightKg != null && heightCm != null && age != null && biologicalSex != null && fitnessGoal != null;
+
   function handleActivate() {
-    if (!experience || !daysPerWeek || !templateSlug) return;
+    if (!experience || !daysPerWeek || !templateSlug || !bodyStatsValid) return;
     setError(null);
     startTransition(async () => {
-      const result = await activateTemplate({ experience, daysPerWeek, templateSlug });
+      const result = await activateTemplate({
+        experience,
+        daysPerWeek,
+        templateSlug,
+        weightKg: weightKg!,
+        heightCm: heightCm!,
+        age: age!,
+        biologicalSex: biologicalSex!,
+        fitnessGoal: fitnessGoal!,
+        unitSystem,
+      });
       if (!result.success) {
         setError(result.error);
         return;
@@ -119,6 +179,145 @@ export function OnboardingWizard({
 
           {step === 1 && (
             <motion.div
+              key="body-stats"
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              className="space-y-4"
+            >
+              <div>
+                <h2 className="heading-system text-lg">Tell us about yourself</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Powers real BMI, calorie, and macro calculations on the Diet &amp; Body page — not shared with anyone.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                {(["metric", "imperial"] as UnitSystem[]).map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => setUnitSystem(u)}
+                    className={cn(
+                      "heading-system flex-1 rounded-lg border py-2 text-center text-xs tracking-wide transition-colors",
+                      unitSystem === u ? "border-primary bg-primary/10 text-glow-cyan" : "border-border hover:bg-accent"
+                    )}
+                  >
+                    {u === "metric" ? "METRIC (KG/CM)" : "IMPERIAL (LBS/FT-IN)"}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="label-system">Weight ({unitSystem === "metric" ? "kg" : "lbs"})</Label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    value={weightInput}
+                    onChange={(e) => setWeightInput(e.target.value)}
+                    placeholder={unitSystem === "metric" ? "e.g. 70" : "e.g. 154"}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="label-system">Age</Label>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={13}
+                    max={100}
+                    value={ageInput}
+                    onChange={(e) => setAgeInput(e.target.value)}
+                    placeholder="e.g. 25"
+                  />
+                </div>
+              </div>
+
+              {unitSystem === "metric" ? (
+                <div className="space-y-1.5">
+                  <Label className="label-system">Height (cm)</Label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    value={heightCmInput}
+                    onChange={(e) => setHeightCmInput(e.target.value)}
+                    placeholder="e.g. 175"
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="label-system">Height (ft)</Label>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={heightFeetInput}
+                      onChange={(e) => setHeightFeetInput(e.target.value)}
+                      placeholder="e.g. 5"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="label-system">Height (in)</Label>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={11}
+                      value={heightInchesInput}
+                      onChange={(e) => setHeightInchesInput(e.target.value)}
+                      placeholder="e.g. 9"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label className="label-system">Biological Sex</Label>
+                <p className="text-[11px] text-muted-foreground">Used only for the BMR formula, which differs slightly by sex.</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {SEX_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setBiologicalSex(opt.value)}
+                      className={cn(
+                        "heading-system rounded-lg border py-2.5 text-center text-[11px] tracking-wide transition-colors",
+                        biologicalSex === opt.value ? "border-primary bg-primary/10 text-glow-cyan" : "border-border hover:bg-accent"
+                      )}
+                    >
+                      {opt.label.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="label-system">Fitness Goal</Label>
+                <div className="space-y-2">
+                  {GOAL_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setFitnessGoal(opt.value)}
+                      className={cn(
+                        "w-full rounded-lg border p-3 text-left transition-colors",
+                        fitnessGoal === opt.value ? "border-primary bg-primary/10" : "border-border hover:bg-accent"
+                      )}
+                    >
+                      <p className="heading-system text-sm">{opt.label}</p>
+                      <p className="text-xs text-muted-foreground">{opt.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 2 && (
+            <motion.div
               key="days"
               initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
@@ -162,7 +361,7 @@ export function OnboardingWizard({
             </motion.div>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <motion.div
               key="routine"
               initial={{ opacity: 0, x: 16 }}
@@ -212,7 +411,7 @@ export function OnboardingWizard({
             <Button
               type="button"
               className="flex-1 heading-system tracking-widest"
-              disabled={(step === 0 && !experience) || (step === 1 && !daysPerWeek)}
+              disabled={(step === 0 && !experience) || (step === 1 && !bodyStatsValid) || (step === 2 && !daysPerWeek)}
               onClick={() => setStep((s) => s + 1)}
             >
               CONTINUE

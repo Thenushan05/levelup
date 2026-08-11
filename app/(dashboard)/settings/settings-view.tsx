@@ -10,8 +10,19 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { updateProfile, changePassword } from "@/actions/settings";
 import { showSystemToast } from "@/lib/toast-system";
+import { BodyStatsForm, type BodyStatsInitial } from "@/components/diet/body-stats-form";
 
-export function SettingsView({ name, email, image }: { name: string; email: string; image: string }) {
+export function SettingsView({
+  name,
+  email,
+  image,
+  bodyStats,
+}: {
+  name: string;
+  email: string;
+  image: string;
+  bodyStats: BodyStatsInitial;
+}) {
   const [profilePending, startProfileTransition] = useTransition();
   const [passwordPending, startPasswordTransition] = useTransition();
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -89,6 +100,18 @@ export function SettingsView({ name, email, image }: { name: string; email: stri
             {profilePending ? "SAVING..." : "SAVE PROFILE"}
           </Button>
         </form>
+      </SystemPanel>
+
+      <SystemPanel className="space-y-4">
+        <SystemLabel accent>Body Stats</SystemLabel>
+        <p className="text-sm text-muted-foreground">
+          Powers the BMI, calorie, and macro calculations on the{" "}
+          <a href="/diet" className="text-glow-cyan underline">
+            Diet &amp; Body
+          </a>{" "}
+          page.
+        </p>
+        <BodyStatsForm initial={bodyStats} />
       </SystemPanel>
 
       <SystemPanel className="space-y-4">

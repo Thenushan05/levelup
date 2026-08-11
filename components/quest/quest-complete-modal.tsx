@@ -2,9 +2,11 @@
 
 import { motion } from "framer-motion";
 import { PartyPopper } from "lucide-react";
+import { Flame } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { formatDuration } from "@/lib/dates";
+import type { WorkoutCalorieEstimate } from "@/lib/calories-burned";
 import type { AchievementUnlockedDTO, DailyWorkoutDTO } from "@/types";
 
 export interface QuestCompleteData {
@@ -12,6 +14,7 @@ export interface QuestCompleteData {
   xp: number;
   achievements: AchievementUnlockedDTO[];
   weeklyQuestCompleted: boolean;
+  caloriesBurnedToday: WorkoutCalorieEstimate | null;
 }
 
 export function QuestCompleteModal({
@@ -76,6 +79,12 @@ export function QuestCompleteModal({
             </div>
 
             <p className="text-xs text-muted-foreground">Awaiting admin approval before it counts toward your level.</p>
+
+            {data.caloriesBurnedToday && (
+              <p className="heading-system flex items-center gap-1.5 text-sm text-glow-cyan">
+                <Flame className="h-4 w-4" /> ~{data.caloriesBurnedToday.kcal} KCAL BURNED
+              </p>
+            )}
 
             {data.weeklyQuestCompleted && (
               <p className="heading-system text-xs text-glow-violet">WEEKLY QUEST COMPLETE — +100 XP PENDING</p>

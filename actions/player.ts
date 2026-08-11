@@ -75,6 +75,9 @@ export interface PlayerStatusDTO {
   levelsToNextRank: number | null;
   /** Queued XP awaiting admin approval — not yet reflected in player.xp/level. */
   pendingXp: number;
+  /** False for anyone who onboarded before body stats existed, or skipped
+   * filling them in via Settings — gates the Diet & Body calculations. */
+  hasBodyStats: boolean;
   /**
    * Set when the player's level has moved past what they've last
    * acknowledged seeing — since XP now lands via admin approval (possibly
@@ -115,6 +118,7 @@ export async function getPlayerStatus(): Promise<PlayerStatusDTO> {
     nextRank: rankProgress.nextRank,
     levelsToNextRank: rankProgress.levelsToNextRank,
     pendingXp: pendingRows[0]?.total ?? 0,
+    hasBodyStats: user.weightKg != null && user.heightCm != null && user.age != null && !!user.biologicalSex,
     newLevelUp,
   };
 }

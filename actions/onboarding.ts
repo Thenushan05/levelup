@@ -57,6 +57,12 @@ export async function activateTemplate(input: OnboardingInput) {
   user.daysPerWeek = parsed.data.daysPerWeek;
   user.activeTemplateId = template._id;
   user.onboardingCompleted = true;
+  user.weightKg = parsed.data.weightKg;
+  user.heightCm = parsed.data.heightCm;
+  user.age = parsed.data.age;
+  user.biologicalSex = parsed.data.biologicalSex;
+  user.fitnessGoal = parsed.data.fitnessGoal;
+  user.unitSystem = parsed.data.unitSystem;
   await user.save();
 
   revalidatePath("/dashboard");

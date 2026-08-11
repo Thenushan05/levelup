@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Flame } from "lucide-react";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { SetRow } from "@/components/quest/set-row";
@@ -12,6 +12,7 @@ import { QuestCompleteModal, type QuestCompleteData } from "@/components/quest/q
 import { updateSet, type ExerciseDetailDTO } from "@/actions/workout";
 import { showAchievementToast, showErrorToast, showXpPendingToast } from "@/lib/toast-system";
 import { formatDisplayDate } from "@/lib/dates";
+import type { WorkoutCalorieEstimate } from "@/lib/calories-burned";
 
 export function ExerciseDetailClient({
   dailyWorkoutId,
@@ -24,6 +25,9 @@ export function ExerciseDetailClient({
   const [exercise, setExercise] = useState(initialDetail.exercise);
   const [prevStatus, setPrevStatus] = useState(initialDetail.workout.status);
   const [completeData, setCompleteData] = useState<QuestCompleteData | null>(null);
+  const [caloriesBurnedToday, setCaloriesBurnedToday] = useState<WorkoutCalorieEstimate | null>(
+    initialDetail.caloriesBurnedToday
+  );
 
   async function handleSaveSet(
     setNumber: number,
@@ -42,6 +46,7 @@ export function ExerciseDetailClient({
       });
       const updatedExercise = result.workout.exercises.find((e) => e.id === exercise.id);
       if (updatedExercise) setExercise(updatedExercise);
+      setCaloriesBurnedToday(result.caloriesBurnedToday);
 
       if (result.xpPending > 0 && completed) showXpPendingToast(result.xpPending, "Objective Progress");
       result.achievementsUnlocked.forEach(showAchievementToast);
@@ -55,6 +60,7 @@ export function ExerciseDetailClient({
           xp: result.xpPending,
           achievements: result.achievementsUnlocked,
           weeklyQuestCompleted: result.weeklyQuestCompleted,
+          caloriesBurnedToday: result.caloriesBurnedToday,
         });
       }
     } catch (err) {
@@ -79,7 +85,7 @@ export function ExerciseDetailClient({
         <SystemLabel accent>Objective</SystemLabel>
         <SystemHeading>{exercise.name}</SystemHeading>
         <p className="label-system">{exercise.muscleGroup}</p>
-        <div className="mx-auto mt-2 flex max-w-xs items-center justify-around border-t border-border/60 pt-3 text-center">
+        <div className="mx-auto mt-2 flex max-w-sm items-center justify-around border-t border-border/60 pt-3 text-center">
           <div>
             <SystemLabel>Target Sets</SystemLabel>
             <p className="heading-system text-sm">{exercise.targetSets}</p>
@@ -88,6 +94,14 @@ export function ExerciseDetailClient({
             <SystemLabel>Target {unit === "seconds" ? "Time" : "Reps"}</SystemLabel>
             <p className="heading-system text-sm">{targetLabel}</p>
           </div>
+          {caloriesBurnedToday && (
+            <div>
+              <SystemLabel>Burned Today</SystemLabel>
+              <p className="heading-system flex items-center justify-center gap-1 text-sm text-glow-cyan">
+                <Flame className="h-3.5 w-3.5" /> {caloriesBurnedToday.kcal} KCAL
+              </p>
+            </div>
+          )}
         </div>
       </SystemPanel>
 
