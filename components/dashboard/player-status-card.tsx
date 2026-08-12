@@ -4,15 +4,9 @@ import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel } from "@/components/system/system-label";
 import { XpBar } from "@/components/system/hud-progress";
 import { RankBadge } from "@/components/system/badges";
+import { BMI_CATEGORY_TONE } from "@/lib/nutrition";
 import { cn } from "@/lib/utils";
 import type { PlayerStatusDTO } from "@/actions/player";
-
-const BMI_CATEGORY_TONE: Record<string, string> = {
-  underweight: "text-glow-violet",
-  normal: "text-glow-cyan",
-  overweight: "text-amber-400",
-  obese: "text-destructive",
-};
 
 export function PlayerStatusCard({ status }: { status: PlayerStatusDTO }) {
   const { player, pendingXp, bmi } = status;

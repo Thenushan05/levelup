@@ -7,21 +7,15 @@ import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { HudProgress } from "@/components/system/hud-progress";
 import { EmptyState } from "@/components/system/empty-state";
 import { BodyStatsForm } from "@/components/diet/body-stats-form";
+import { BmiCategoryTable } from "@/components/diet/bmi-category-table";
 import { formatDisplayDate } from "@/lib/dates";
-import { kgToLbs } from "@/lib/nutrition";
+import { BMI_CATEGORY_TONE, kgToLbs } from "@/lib/nutrition";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Diet & Body — ASCEND" };
 
 const BMI_SCALE_MIN = 15;
 const BMI_SCALE_MAX = 40;
-
-const CATEGORY_TONE: Record<string, string> = {
-  underweight: "text-glow-violet",
-  normal: "text-glow-cyan",
-  overweight: "text-amber-400",
-  obese: "text-destructive",
-};
 
 export default async function DietPage() {
   const profile = await getDietProfile();
@@ -63,16 +57,14 @@ export default async function DietPage() {
               <SystemLabel accent>Body Mass Index</SystemLabel>
               <div className="flex items-baseline justify-between">
                 <span className="font-heading text-3xl">{profile.bmi!.bmi}</span>
-                <span className={cn("heading-system text-sm", CATEGORY_TONE[profile.bmi!.category])}>
+                <span className={cn("heading-system text-sm", BMI_CATEGORY_TONE[profile.bmi!.category])}>
                   {profile.bmi!.categoryLabel.toUpperCase()}
                 </span>
               </div>
               <HudProgress
                 percentage={((profile.bmi!.bmi - BMI_SCALE_MIN) / (BMI_SCALE_MAX - BMI_SCALE_MIN)) * 100}
               />
-              <p className="text-[11px] text-muted-foreground">
-                Underweight &lt;18.5 · Normal 18.5–24.9 · Overweight 25–29.9 · Obese ≥30 (WHO)
-              </p>
+              <BmiCategoryTable bmi={profile.bmi} />
             </SystemPanel>
 
             {profile.dietPlan && (
