@@ -55,26 +55,57 @@ export interface BmiResult {
   categoryLabel: string;
 }
 
+/** WHO adult BMI bands, in table order — single source of truth for every
+ * BMI table/legend in the UI (Diet & Body page, dashboard). */
+export const BMI_CATEGORY_ROWS: { category: BmiCategory; range: string; label: string }[] = [
+  { category: "underweight", range: "Below 18.5", label: "Underweight" },
+  { category: "normal", range: "18.5 – 24.9", label: "Healthy Weight" },
+  { category: "overweight", range: "25.0 – 29.9", label: "Overweight" },
+  { category: "obese", range: "30.0+", label: "Obesity" },
+];
+
+/** Color tone per category — reused by every BMI readout so a category
+ * always reads the same color across the app. */
+export const BMI_CATEGORY_TONE: Record<BmiCategory, string> = {
+  underweight: "text-glow-violet",
+  normal: "text-glow-cyan",
+  overweight: "text-amber-400",
+  obese: "text-destructive",
+};
+
+/** Short encouragement per category — the BMI readout should always leave
+ * the player feeling like there's a next move, never just a verdict. */
+export const BMI_CATEGORY_MOTIVATION: Record<BmiCategory, string> = {
+  underweight: "Fuel up and lift heavy — you're building the foundation for real strength gains.",
+  normal: "You're in the Healthy Weight zone — every quest you complete keeps you there. Keep it up!",
+  overweight: "You're already moving the right direction — every logged workout is progress toward Healthy Weight.",
+  obese: "Every quest completed is a real step forward. Consistency beats perfection — you've got this.",
+};
+
+/** Solo Leveling–flavored "System" announcement per category — used for the
+ * single-condition highlight on the dashboard, where the vibe is a status
+ * window arising, not a clinical readout. */
+export const BMI_CATEGORY_QUOTE: Record<BmiCategory, string> = {
+  underweight:
+    "Arise. Even the Shadow Monarch began as nothing but bone and hunger — feed the body that will carry you to S-Rank.",
+  normal: "Status: Synchronized. This is the body of a true Hunter — arise and keep pushing past the level cap.",
+  overweight: "Every rank-up starts with a Hunter willing to fight today's weight. The next Gate is already open.",
+  obese: "No Hunter starts at S-Rank. The System doesn't care where you began — only that you arise again.",
+};
+
 /** BMI = weight(kg) / height(m)^2 — WHO adult categories. */
 export function calculateBmi(weightKg: number, heightCm: number): BmiResult {
   const heightM = heightCm / 100;
   const bmi = weightKg / (heightM * heightM);
-  let category: BmiCategory;
-  let categoryLabel: string;
-  if (bmi < 18.5) {
-    category = "underweight";
-    categoryLabel = "Underweight";
-  } else if (bmi < 25) {
-    category = "normal";
-    categoryLabel = "Normal";
-  } else if (bmi < 30) {
-    category = "overweight";
-    categoryLabel = "Overweight";
-  } else {
-    category = "obese";
-    categoryLabel = "Obese";
-  }
-  return { bmi: Math.round(bmi * 10) / 10, category, categoryLabel };
+  const row =
+    bmi < 18.5
+      ? BMI_CATEGORY_ROWS[0]
+      : bmi < 25
+        ? BMI_CATEGORY_ROWS[1]
+        : bmi < 30
+          ? BMI_CATEGORY_ROWS[2]
+          : BMI_CATEGORY_ROWS[3];
+  return { bmi: Math.round(bmi * 10) / 10, category: row.category, categoryLabel: row.label };
 }
 
 /**

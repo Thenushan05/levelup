@@ -227,6 +227,10 @@
     color: oklch(0.78 0.19 296);
     text-shadow: 0 0 18px oklch(0.6 0.23 296 / 55%), 0 0 40px oklch(0.6 0.23 296 / 25%);
   }
+  .text-glow-success {
+    color: oklch(0.76 0.17 172);
+    text-shadow: 0 0 18px oklch(0.76 0.17 172 / 55%), 0 0 40px oklch(0.76 0.17 172 / 25%);
+  }
 
   /* XP / progress bar track + fill — clipped ends to match the panel language */
   .xp-track {

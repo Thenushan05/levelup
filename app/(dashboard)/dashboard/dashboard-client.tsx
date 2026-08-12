@@ -11,6 +11,8 @@ import { WeeklyQuestCard } from "@/components/dashboard/weekly-quest-card";
 import { StreakCard } from "@/components/dashboard/streak-card";
 import { AttendanceCard } from "@/components/dashboard/attendance-card";
 import { PartyActivityPreview } from "@/components/dashboard/party-activity-preview";
+import { BmiStatusHighlight } from "@/components/diet/bmi-status-highlight";
+import { HealthLevelGauge } from "@/components/dashboard/health-level-gauge";
 import { LevelUpReveal } from "@/components/system/level-up-reveal";
 import type { PlayerStatusDTO } from "@/actions/player";
 import type { AttendanceStatusDTO } from "@/actions/attendance";
@@ -59,8 +61,9 @@ export function DashboardClient({
         <div className="lg:col-span-3">
           <PlayerStatusCard status={status} />
         </div>
-        <div className="lg:col-span-6">
+        <div className="space-y-6 lg:col-span-6">
           <DailyQuestCard quest={quest} caloriesBurnedToday={caloriesBurnedToday} />
+          <HealthLevelGauge level={status.player.level} xp={status.player.xp} requiredXp={status.player.requiredXp} />
         </div>
         <div className="space-y-6 lg:col-span-3">
           <AttendanceCard initial={attendance} />
@@ -68,6 +71,12 @@ export function DashboardClient({
           <StreakCard current={status.player.currentStreak} longest={status.player.longestStreak} />
         </div>
       </div>
+
+      {status.bmi && (
+        <Link href="/diet" className="block">
+          <BmiStatusHighlight bmi={status.bmi} />
+        </Link>
+      )}
 
       <PartyActivityPreview activity={activity} hasParty={!!party} />
 

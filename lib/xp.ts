@@ -13,13 +13,20 @@ export type XpReason =
 
 /**
  * The entire leveling curve lives here so it's configurable in one place.
- * requiredXp(level) = XP_BASE + level * XP_INCREMENT
+ *
+ * WEEK_XP is the total XP a fully-compliant week of the default 3-day
+ * template earns: 3 check-ins (3*10=30) + 18 exercises (18*5=90) +
+ * 3 workouts complete (3*50=150) + 1 weekly quest bonus (100) = 370.
+ *
+ * requiredXp(level) = WEEK_XP * level, so leveling up gets a full week
+ * harder each time: level 1->2 takes 1 perfect week, level 2->3 takes 2,
+ * level 3->4 takes 3, and so on. No amount of single-day grinding skips
+ * a level — it always takes real, sustained weeks of training.
  */
-export const XP_BASE = 100;
-export const XP_INCREMENT = 50;
+export const WEEK_XP = 370;
 
 export function requiredXpForLevel(level: number): number {
-  return XP_BASE + level * XP_INCREMENT;
+  return WEEK_XP * level;
 }
 
 /**
