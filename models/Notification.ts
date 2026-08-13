@@ -8,6 +8,16 @@ const ReactionSchema = new Schema(
   { _id: false }
 );
 
+const CommentSchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    userName: { type: String, required: true },
+    text: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: true }
+);
+
 const NotificationSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -28,6 +38,7 @@ const NotificationSchema = new Schema(
         "party_quest_complete",
         "party_level_up",
         "party_achievement",
+        "nudge",
       ],
       required: true,
     },
@@ -39,6 +50,7 @@ const NotificationSchema = new Schema(
     actorName: { type: String, default: null },
 
     reactions: { type: [ReactionSchema], default: [] },
+    comments: { type: [CommentSchema], default: [] },
 
     read: { type: Boolean, default: false },
   },

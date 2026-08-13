@@ -9,9 +9,21 @@ import { DailyWorkout } from "@/models/DailyWorkout";
 import { WorkoutTemplate } from "@/models/WorkoutTemplate";
 import { Notification } from "@/models/Notification";
 import { requireUserDoc, requireUserId, UnauthorizedError } from "@/lib/session";
-import { createGroupSchema, joinGroupSchema, reactionSchema, type CreateGroupInput, type JoinGroupInput, type ReactionInput } from "@/lib/validations/party";
+import {
+  createGroupSchema,
+  joinGroupSchema,
+  reactionSchema,
+  activityCommentSchema,
+  nudgeSchema,
+  type CreateGroupInput,
+  type JoinGroupInput,
+  type ReactionInput,
+  type ActivityCommentInput,
+  type NudgeInput,
+} from "@/lib/validations/party";
 import { dayOfWeekFromKey, todayKey, weekRange } from "@/lib/dates";
 import { requiredXpForLevel } from "@/lib/xp";
+import { notifyUser } from "@/lib/notify";
 import type { Rank } from "@/types";
 
 const nanoid = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
@@ -91,6 +103,24 @@ export async function joinGroup(input: JoinGroupInput): Promise<PartySummaryDTO>
   };
 }
 
+/** Only the party's creator can delete it — checked against ownerId, not just membership.
+ * Also cleans up the party's activity feed (Notification docs scoped to this groupId) so
+ * nothing lingers pointing at a deleted party. */
+export async function deleteParty(groupId: string): Promise<void> {
+  const userId = await requireUserId();
+
+  const group = await GymGroup.findById(groupId).lean();
+  if (!group) throw new Error("Party not found.");
+  if (group.ownerId.toString() !== userId) {
+    throw new UnauthorizedError("SYSTEM ERROR: Only the party's creator can delete it.");
+  }
+
+  await GymGroup.findByIdAndDelete(groupId);
+  await Notification.deleteMany({ groupId });
+
+  revalidatePath("/party");
+}
+
 async function assertMembership(groupId: string, userId: string) {
   const group = await GymGroup.findOne({ _id: groupId, "members.userId": userId }).lean();
   if (!group) throw new UnauthorizedError("SYSTEM ERROR: You are not a member of this party.");
@@ -105,11 +135,67 @@ export interface PartyMemberDTO {
   rank: string;
   todayStatus: "complete" | "in_progress" | "not_started" | "rest" | "optional" | "no_plan";
   online: boolean;
+  /** This week's leaderboard #1 (see computeWeeklyCompletions/weeklyMvpUserId below) — the
+   * same figure behind the Weekly tab's crown, surfaced here too so it's visible without
+   * switching tabs. Naturally resets each week since it's derived live, not stored. */
+  isMvp: boolean;
+  isMe: boolean;
+  /** The routine they're currently following — null if they haven't activated one. */
+  templateName: string | null;
+}
+
+interface WeeklyCompletionRow {
+  userId: string;
+  name: string;
+  level: number;
+  completed: number;
+  required: number;
+}
+
+/** This week's completed/required workout count per member — the figures behind the Weekly
+ * leaderboard tab. Shared so the MVP crown (getPartyMembers) and the leaderboard
+ * (getLeaderboard) can never disagree about who's actually on top. */
+async function computeWeeklyCompletions(memberIds: Types.ObjectId[]): Promise<WeeklyCompletionRow[]> {
+  const users = await User.find({ _id: { $in: memberIds } }).select("name activeTemplateId level").lean();
+  const today = todayKey();
+  const week = weekRange(today);
+
+  return Promise.all(
+    users.map(async (u) => {
+      if (!u.activeTemplateId) {
+        return { userId: u._id.toString(), name: u.name, level: u.level, completed: 0, required: 0 };
+      }
+      const template = await WorkoutTemplate.findById(u.activeTemplateId).lean();
+      if (!template) {
+        return { userId: u._id.toString(), name: u.name, level: u.level, completed: 0, required: 0 };
+      }
+      const requiredDates = week.filter((d) => {
+        const entry = template.schedule.find((s) => s.dayOfWeek === dayOfWeekFromKey(d));
+        return entry?.type === "workout";
+      });
+      const completed = await DailyWorkout.countDocuments({
+        userId: u._id,
+        date: { $in: requiredDates },
+        status: "complete",
+      });
+      return { userId: u._id.toString(), name: u.name, level: u.level, completed, required: requiredDates.length };
+    })
+  );
+}
+
+/** This week's leaderboard #1 — null if nobody's completed anything yet, or if there's an
+ * exact tie for first (no single MVP to crown in that case). */
+function weeklyMvpUserId(rows: WeeklyCompletionRow[]): string | null {
+  const sorted = [...rows].sort((a, b) => b.completed - a.completed || b.level - a.level);
+  const top = sorted[0];
+  if (!top || top.completed === 0) return null;
+  const tied = sorted.filter((r) => r.completed === top.completed && r.level === top.level);
+  return tied.length === 1 ? top.userId : null;
 }
 
 export async function getPartyMembers(groupId: string): Promise<PartyMemberDTO[]> {
-  const userId = await requireUserId();
-  const group = await assertMembership(groupId, userId);
+  const requesterId = await requireUserId();
+  const group = await assertMembership(groupId, requesterId);
 
   const memberIds = group.members.map((m) => m.userId);
   const users = await User.find({ _id: { $in: memberIds } }).lean();
@@ -118,6 +204,11 @@ export async function getPartyMembers(groupId: string): Promise<PartyMemberDTO[]
     .select("userId status type")
     .lean();
   const workoutByUser = new Map(workouts.map((w) => [w.userId.toString(), w]));
+  const mvpUserId = weeklyMvpUserId(await computeWeeklyCompletions(memberIds));
+
+  const templateIds = [...new Set(users.map((u) => u.activeTemplateId).filter((id) => id != null))];
+  const templates = await WorkoutTemplate.find({ _id: { $in: templateIds } }).select("name").lean();
+  const templateNameById = new Map(templates.map((t) => [t._id.toString(), t.name]));
 
   const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
 
@@ -147,15 +238,64 @@ export async function getPartyMembers(groupId: string): Promise<PartyMemberDTO[]
         rank: u.rank,
         todayStatus,
         online: !!u.updatedAt && new Date(u.updatedAt) > fifteenMinAgo,
+        isMvp: u._id.toString() === mvpUserId,
+        isMe: u._id.toString() === requesterId,
+        templateName: u.activeTemplateId ? templateNameById.get(u.activeTemplateId.toString()) ?? null : null,
       };
     })
     .sort((a, b) => b.level - a.level);
+}
+
+/**
+ * A lightweight, rate-limited "cheer" — sends the target a personal notification, nothing
+ * more. Client-side this is only offered next to members whose todayStatus is "not_started"
+ * (see party-view.tsx), but the real guard here is just: shared party, not yourself, and at
+ * most once per day per target — nudging someone who's already started is harmless, not worth
+ * blocking on a second server round trip to re-check their workout status.
+ */
+export async function nudgeMember(input: NudgeInput): Promise<void> {
+  const parsed = nudgeSchema.parse(input);
+  const actor = await requireUserDoc();
+  const targetId = parsed.memberUserId;
+
+  if (targetId === actor._id.toString()) {
+    throw new Error("You can't cheer yourself on.");
+  }
+
+  const sharedGroup = await GymGroup.findOne({
+    $and: [{ "members.userId": actor._id }, { "members.userId": new Types.ObjectId(targetId) }],
+  }).lean();
+  if (!sharedGroup) throw new UnauthorizedError("SYSTEM ERROR: You are not in a party with this member.");
+
+  const today = todayKey();
+  const alreadyNudgedToday = await Notification.findOne({
+    userId: targetId,
+    groupId: null,
+    type: "nudge",
+    "meta.nudgedBy": actor._id.toString(),
+    "meta.date": today,
+  }).lean();
+  if (alreadyNudgedToday) {
+    throw new Error("You've already cheered them on today.");
+  }
+
+  await notifyUser(targetId, "nudge", "Cheer Received", `${actor.name} is cheering you on 🔥`, {
+    nudgedBy: actor._id.toString(),
+    date: today,
+  });
 }
 
 export interface ActivityReactionDTO {
   emoji: string;
   count: number;
   reactedByMe: boolean;
+}
+
+export interface ActivityCommentDTO {
+  id: string;
+  userName: string;
+  text: string;
+  createdAt: string;
 }
 
 export interface PartyActivityDTO {
@@ -165,6 +305,7 @@ export interface PartyActivityDTO {
   message: string;
   createdAt: string;
   reactions: ActivityReactionDTO[];
+  comments: ActivityCommentDTO[];
 }
 
 export async function getPartyActivity(groupId: string, limit = 30): Promise<PartyActivityDTO[]> {
@@ -188,8 +329,35 @@ export async function getPartyActivity(groupId: string, limit = 30): Promise<Par
       message: d.message ?? "",
       createdAt: new Date(d.createdAt).toISOString(),
       reactions: Array.from(emojiCounts.entries()).map(([emoji, v]) => ({ emoji, ...v })),
+      comments: (d.comments ?? []).map((c) => ({
+        id: c._id.toString(),
+        userName: c.userName,
+        text: c.text,
+        createdAt: new Date(c.createdAt).toISOString(),
+      })),
     };
   });
+}
+
+export async function addActivityComment(input: ActivityCommentInput): Promise<ActivityCommentDTO> {
+  const parsed = activityCommentSchema.parse(input);
+  const user = await requireUserDoc();
+
+  const notif = await Notification.findById(parsed.notificationId);
+  if (!notif || !notif.groupId) throw new Error("Activity not found.");
+  await assertMembership(notif.groupId.toString(), user._id.toString());
+
+  notif.comments.push({ userId: user._id, userName: user.name, text: parsed.text });
+  await notif.save();
+  revalidatePath("/party");
+
+  const created = notif.comments[notif.comments.length - 1];
+  return {
+    id: created._id.toString(),
+    userName: created.userName,
+    text: created.text,
+    createdAt: created.createdAt.toISOString(),
+  };
 }
 
 export async function reactToActivity(input: ReactionInput): Promise<void> {
@@ -225,31 +393,7 @@ export async function getLeaderboard(groupId: string): Promise<LeaderboardRowDTO
   const group = await assertMembership(groupId, userId);
 
   const memberIds = group.members.map((m) => m.userId);
-  const users = await User.find({ _id: { $in: memberIds } }).lean();
-  const today = todayKey();
-  const week = weekRange(today);
-
-  const rows = await Promise.all(
-    users.map(async (u) => {
-      if (!u.activeTemplateId) {
-        return { userId: u._id.toString(), name: u.name, level: u.level, completed: 0, required: 0 };
-      }
-      const template = await WorkoutTemplate.findById(u.activeTemplateId).lean();
-      if (!template) {
-        return { userId: u._id.toString(), name: u.name, level: u.level, completed: 0, required: 0 };
-      }
-      const requiredDates = week.filter((d) => {
-        const entry = template.schedule.find((s) => s.dayOfWeek === dayOfWeekFromKey(d));
-        return entry?.type === "workout";
-      });
-      const completed = await DailyWorkout.countDocuments({
-        userId: u._id,
-        date: { $in: requiredDates },
-        status: "complete",
-      });
-      return { userId: u._id.toString(), name: u.name, level: u.level, completed, required: requiredDates.length };
-    })
-  );
+  const rows = await computeWeeklyCompletions(memberIds);
 
   return rows.sort((a, b) => b.completed - a.completed || b.level - a.level);
 }

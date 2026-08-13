@@ -24,7 +24,8 @@ export type NotificationType =
   | "party_check_in"
   | "party_quest_complete"
   | "party_level_up"
-  | "party_achievement";
+  | "party_achievement"
+  | "nudge";
 
 export interface SetDTO {
   id: string;
