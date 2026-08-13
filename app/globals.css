@@ -125,6 +125,28 @@
   ::selection {
     background: oklch(0.83 0.17 213 / 32%);
   }
+  /* Thin, theme-colored scrollbar everywhere — Firefox via scrollbar-width/-color,
+     Chrome/Safari/Edge via the ::-webkit-scrollbar pseudo-elements. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.83 0.17 213 / 45%) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: oklch(0.83 0.17 213 / 40%);
+    border-radius: 8px;
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.83 0.17 213 / 65%);
+  }
   /* Tailwind's preflight leaves <button> at the browser default (cursor: default) instead of
      restoring cursor: pointer like older resets did. Every clickable control in this app is a
      real <button>/<Link>/[role="button"], so one rule here covers them all. */
