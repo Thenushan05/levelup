@@ -35,10 +35,21 @@ export interface AchievementDefinition {
  */
 export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
+    key: "gate_opened",
+    title: "Gate Opened",
+    description: "Checked into the gym for the first time.",
+    lockedDescription: "Check into the gym once to unlock.",
+    xpReward: 25,
+    icon: "DoorOpen",
+    criteriaType: "check_ins",
+    criteriaValue: 1,
+    sortOrder: 5,
+  },
+  {
     key: "first_quest",
-    title: "First Quest",
-    description: "Completed your first workout.",
-    lockedDescription: "Complete your first workout to unlock.",
+    title: "First Gate Cleared",
+    description: "Cleared your first Gate — the System has taken notice.",
+    lockedDescription: "Complete your first workout to clear your first Gate.",
     xpReward: 50,
     icon: "Flag",
     criteriaType: "total_workouts",
@@ -47,8 +58,8 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   },
   {
     key: "ten_quests",
-    title: "Ten Quests",
-    description: "Completed 10 workouts.",
+    title: "Gate Breaker",
+    description: "Cleared 10 Gates without slowing down.",
     lockedDescription: "Complete 10 workouts to unlock.",
     xpReward: 100,
     icon: "ListChecks",
@@ -58,8 +69,8 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   },
   {
     key: "quarter_century",
-    title: "Quarter Century",
-    description: "Completed 25 workouts.",
+    title: "Seasoned Hunter",
+    description: "Cleared 25 Gates. You're no longer a rookie.",
     lockedDescription: "Complete 25 workouts to unlock.",
     xpReward: 150,
     icon: "Medal",
@@ -69,8 +80,8 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   },
   {
     key: "half_century",
-    title: "Half Century",
-    description: "Completed 50 workouts.",
+    title: "Veteran Hunter",
+    description: "Cleared 50 Gates. The Association knows your name.",
     lockedDescription: "Complete 50 workouts to unlock.",
     xpReward: 250,
     icon: "Trophy",
@@ -80,8 +91,8 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   },
   {
     key: "centurion",
-    title: "Centurion",
-    description: "Completed 100 workouts.",
+    title: "Legendary Hunter",
+    description: "Cleared 100 Gates — the mark of a legendary Hunter.",
     lockedDescription: "Complete 100 workouts to unlock.",
     xpReward: 500,
     icon: "Crown",
@@ -90,9 +101,20 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     sortOrder: 50,
   },
   {
+    key: "apex_hunter",
+    title: "Apex Hunter",
+    description: "Cleared 200 Gates. You've become a legend among Hunters.",
+    lockedDescription: "Complete 200 workouts to unlock.",
+    xpReward: 750,
+    icon: "Gem",
+    criteriaType: "total_workouts",
+    criteriaValue: 200,
+    sortOrder: 55,
+  },
+  {
     key: "consistent",
-    title: "Consistent",
-    description: "Completed all required workouts in a week.",
+    title: "Daily Quest: Complete",
+    description: "Finished every Daily Quest in a full week.",
     lockedDescription: "Complete a full weekly quest to unlock.",
     xpReward: 100,
     icon: "CalendarCheck",
@@ -102,8 +124,8 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   },
   {
     key: "dedicated",
-    title: "Dedicated",
-    description: "Completed 4 full weekly quests.",
+    title: "System Compliant",
+    description: "Finished 4 full weeks of Daily Quests without missing one.",
     lockedDescription: "Complete 4 full weekly quests to unlock.",
     xpReward: 150,
     icon: "CalendarDays",
@@ -112,9 +134,20 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     sortOrder: 70,
   },
   {
+    key: "unbreakable",
+    title: "Unbreakable",
+    description: "Finished 12 full weekly quests. The System can't slow you down.",
+    lockedDescription: "Complete 12 full weekly quests to unlock.",
+    xpReward: 300,
+    icon: "CalendarRange",
+    criteriaType: "weekly_quest_count",
+    criteriaValue: 12,
+    sortOrder: 75,
+  },
+  {
     key: "week_streak",
-    title: "Seven Day Streak",
-    description: "Reached a 7-day consistency streak.",
+    title: "Penalty Zone Avoided",
+    description: "Held a 7-day streak — no penalty quests for you.",
     lockedDescription: "Reach a 7-day streak to unlock.",
     xpReward: 100,
     icon: "Flame",
@@ -124,8 +157,8 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   },
   {
     key: "streak_master",
-    title: "Streak Master",
-    description: "Reached a 30-day consistency streak.",
+    title: "Iron Will",
+    description: "Held a 30-day streak. The grind never stopped.",
     lockedDescription: "Reach a 30-day streak to unlock.",
     xpReward: 300,
     icon: "Flame",
@@ -134,9 +167,20 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     sortOrder: 90,
   },
   {
+    key: "relentless",
+    title: "Relentless",
+    description: "Held a 60-day streak. No Gate goes uncleared.",
+    lockedDescription: "Reach a 60-day streak to unlock.",
+    xpReward: 500,
+    icon: "Flame",
+    criteriaType: "streak",
+    criteriaValue: 60,
+    sortOrder: 95,
+  },
+  {
     key: "month_one",
-    title: "Month One",
-    description: "Completed your first full month of training.",
+    title: "Awakening",
+    description: "Completed your first full month of training — your Awakening as a Hunter.",
     lockedDescription: "Complete your first full month of training to unlock.",
     xpReward: 200,
     icon: "CalendarClock",
@@ -147,7 +191,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
     key: "rank_d",
     title: "D-Rank Hunter",
-    description: "Reached D Rank.",
+    description: "The System has ranked you: D-Rank Hunter.",
     lockedDescription: "Reach D Rank (Level 6) to unlock.",
     xpReward: 75,
     icon: "Shield",
@@ -158,7 +202,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
     key: "rank_c",
     title: "C-Rank Hunter",
-    description: "Reached C Rank.",
+    description: "The System has ranked you: C-Rank Hunter.",
     lockedDescription: "Reach C Rank (Level 11) to unlock.",
     xpReward: 150,
     icon: "ShieldHalf",
@@ -169,7 +213,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
     key: "rank_b",
     title: "B-Rank Hunter",
-    description: "Reached B Rank.",
+    description: "The System has ranked you: B-Rank Hunter.",
     lockedDescription: "Reach B Rank (Level 21) to unlock.",
     xpReward: 250,
     icon: "ShieldCheck",
@@ -180,7 +224,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
     key: "rank_a",
     title: "A-Rank Hunter",
-    description: "Reached A Rank.",
+    description: "The System has ranked you: A-Rank Hunter.",
     lockedDescription: "Reach A Rank (Level 36) to unlock.",
     xpReward: 400,
     icon: "ShieldPlus",
@@ -190,8 +234,8 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   },
   {
     key: "rank_s",
-    title: "S-Rank Ascendant",
-    description: "Reached S Rank.",
+    title: "National-Level Hunter",
+    description: "The System has ranked you: an S-Rank, National-Level Hunter.",
     lockedDescription: "Reach S Rank (Level 51) to unlock.",
     xpReward: 750,
     icon: "Sparkles",
@@ -200,8 +244,19 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     sortOrder: 150,
   },
   {
+    key: "transcendent",
+    title: "Transcendent Hunter",
+    description: "Reached Level 75 — beyond even S-Rank expectations.",
+    lockedDescription: "Reach Level 75 to unlock.",
+    xpReward: 1000,
+    icon: "Sparkles",
+    criteriaType: "level",
+    criteriaValue: 75,
+    sortOrder: 155,
+  },
+  {
     key: "gym_regular",
-    title: "Gym Regular",
+    title: "Gate Regular",
     description: "Checked into the gym 10 times.",
     lockedDescription: "Check into the gym 10 times to unlock.",
     xpReward: 50,
@@ -212,8 +267,8 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   },
   {
     key: "gym_veteran",
-    title: "Gym Veteran",
-    description: "Checked into the gym 50 times.",
+    title: "Hunter Association Regular",
+    description: "Checked into the gym 50 times — a familiar face at the Association.",
     lockedDescription: "Check into the gym 50 times to unlock.",
     xpReward: 150,
     icon: "Dumbbell",
@@ -221,15 +276,42 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     criteriaValue: 50,
     sortOrder: 170,
   },
+  {
+    key: "hunter_elite",
+    title: "Hunter Association Elite",
+    description: "Checked into the gym 100 times.",
+    lockedDescription: "Check into the gym 100 times to unlock.",
+    xpReward: 300,
+    icon: "Building2",
+    criteriaType: "check_ins",
+    criteriaValue: 100,
+    sortOrder: 175,
+  },
 ];
 
 export async function ensureAchievementsSeeded() {
   await connectToDatabase();
+  // $set (not $setOnInsert) for the display/reward fields: this catalog is the shipped,
+  // source-controlled definition (same reasoning as the built-in template/exercise catalog in
+  // lib/seed.ts), so a retheme here reaches already-seeded DB docs on the next run instead of
+  // freezing after first insert. Only `key` — the identity used to match a doc — is insert-only.
   await Promise.all(
     ACHIEVEMENT_DEFINITIONS.map((def) =>
       Achievement.findOneAndUpdate(
         { key: def.key },
-        { $setOnInsert: def },
+        {
+          $set: {
+            title: def.title,
+            description: def.description,
+            lockedDescription: def.lockedDescription,
+            xpReward: def.xpReward,
+            icon: def.icon,
+            criteriaType: def.criteriaType,
+            criteriaValue: def.criteriaValue,
+            sortOrder: def.sortOrder,
+          },
+          $setOnInsert: { key: def.key },
+        },
         { upsert: true }
       )
     )
