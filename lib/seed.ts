@@ -14,31 +14,33 @@ interface CatalogExercise {
   imageUrl?: string;
   /** 6 entries aligned to BODYWEIGHT_BANDS in lib/weight-guidance.ts. Omit for bodyweight-only moves. */
   weightGuidance?: string[];
+  /** Fixed approximate kcal range for one full completion at the catalog's sets/reps — a flat lookup, not a formula. */
+  calorieBurn?: { min: number; max: number };
 }
 
 export const EXERCISE_CATALOG: CatalogExercise[] = [
   { slug: "bench-press", name: "Bench Press", muscleGroup: "Chest", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12 },
-  { slug: "lat-pulldown", name: "Lat Pulldown — Wide Grip", muscleGroup: "Back", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12, imageUrl: "/exercises/lat-pulldown.png", weightGuidance: ["15–20 kg", "20–25 kg", "25–30 kg", "27.5–35 kg", "30–40 kg", "35–45 kg"] },
-  { slug: "incline-dumbbell-press", name: "Incline Dumbbell Bench Press", muscleGroup: "Chest", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 12, imageUrl: "/exercises/incline-dumbbell-press.png", weightGuidance: ["5–7 kg", "6–8 kg", "8–10 kg", "9–12 kg", "10–14 kg", "12–16 kg"] },
-  { slug: "seated-cable-row", name: "Seated Cable Rows — Neutral Grip", muscleGroup: "Back", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 12, imageUrl: "/exercises/seated-cable-row.png", weightGuidance: ["15–20 kg", "20–25 kg", "25–30 kg", "27.5–35 kg", "30–40 kg", "35–45 kg"] },
-  { slug: "lateral-raise", name: "Dumbbell Lateral Raises", muscleGroup: "Shoulders", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/lateral-raise.png", weightGuidance: ["2–3 kg", "2–4 kg", "3–4 kg", "3–5 kg", "4–6 kg", "4–7 kg"] },
-  { slug: "tricep-pushdown", name: "Triceps Cable Pushdowns", muscleGroup: "Triceps", defaultSets: 2, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/tricep-pushdown.png", weightGuidance: ["7.5–10 kg", "10–12.5 kg", "12.5–15 kg", "15–20 kg", "17.5–22.5 kg", "20–25 kg"] },
-  { slug: "dumbbell-curl", name: "Dumbbell Bicep Curls", muscleGroup: "Biceps", defaultSets: 2, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/dumbbell-curl.png", weightGuidance: ["3–5 kg", "4–6 kg", "6–8 kg", "7–9 kg", "8–10 kg", "9–12 kg"] },
+  { slug: "lat-pulldown", name: "Lat Pulldown — Wide Grip", muscleGroup: "Back", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12, imageUrl: "/exercises/lat-pulldown.png", weightGuidance: ["15–20 kg", "20–25 kg", "25–30 kg", "27.5–35 kg", "30–40 kg", "35–45 kg"], calorieBurn: { min: 18, max: 28 } },
+  { slug: "incline-dumbbell-press", name: "Incline Dumbbell Bench Press", muscleGroup: "Chest", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 12, imageUrl: "/exercises/incline-dumbbell-press.png", weightGuidance: ["5–7 kg", "6–8 kg", "8–10 kg", "9–12 kg", "10–14 kg", "12–16 kg"], calorieBurn: { min: 15, max: 25 } },
+  { slug: "seated-cable-row", name: "Seated Cable Rows — Neutral Grip", muscleGroup: "Back", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 12, imageUrl: "/exercises/seated-cable-row.png", weightGuidance: ["15–20 kg", "20–25 kg", "25–30 kg", "27.5–35 kg", "30–40 kg", "35–45 kg"], calorieBurn: { min: 15, max: 25 } },
+  { slug: "lateral-raise", name: "Dumbbell Lateral Raises", muscleGroup: "Shoulders", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/lateral-raise.png", weightGuidance: ["2–3 kg", "2–4 kg", "3–4 kg", "3–5 kg", "4–6 kg", "4–7 kg"], calorieBurn: { min: 12, max: 20 } },
+  { slug: "tricep-pushdown", name: "Triceps Cable Pushdowns", muscleGroup: "Triceps", defaultSets: 2, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/tricep-pushdown.png", weightGuidance: ["7.5–10 kg", "10–12.5 kg", "12.5–15 kg", "15–20 kg", "17.5–22.5 kg", "20–25 kg"], calorieBurn: { min: 10, max: 18 } },
+  { slug: "dumbbell-curl", name: "Dumbbell Bicep Curls", muscleGroup: "Biceps", defaultSets: 2, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/dumbbell-curl.png", weightGuidance: ["3–5 kg", "4–6 kg", "6–8 kg", "7–9 kg", "8–10 kg", "9–12 kg"], calorieBurn: { min: 10, max: 18 } },
 
   { slug: "squat", name: "Squat", muscleGroup: "Legs", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12 },
-  { slug: "romanian-deadlift", name: "Romanian Dumbbell Deadlifts", muscleGroup: "Hamstrings", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12, imageUrl: "/exercises/romanian-deadlift.png", weightGuidance: ["5–7 kg each", "6–9 kg", "8–10 kg", "9–12 kg", "10–15 kg", "12–18 kg"] },
-  { slug: "leg-press", name: "Leg Press Machine", muscleGroup: "Legs", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/leg-press.png", weightGuidance: ["25–35 kg", "30–45 kg", "40–50 kg", "45–60 kg", "50–70 kg", "60–80 kg"] },
-  { slug: "leg-curl", name: "Lying Leg Curls", muscleGroup: "Hamstrings", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/leg-curl.png", weightGuidance: ["10–15 kg", "15–20 kg", "20–25 kg", "22.5–30 kg", "25–35 kg", "30–40 kg"] },
-  { slug: "calf-raise", name: "Standing Calf Raises", muscleGroup: "Calves", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/calf-raise.png", weightGuidance: ["Bodyweight / 5 kg", "5–8 kg", "10 kg", "10–15 kg", "12–20 kg", "15–25 kg"] },
-  { slug: "plank", name: "Plank", muscleGroup: "Core", defaultSets: 3, defaultRepsMin: 30, defaultRepsMax: 60, imageUrl: "/exercises/plank.png" },
+  { slug: "romanian-deadlift", name: "Romanian Dumbbell Deadlifts", muscleGroup: "Hamstrings", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12, imageUrl: "/exercises/romanian-deadlift.png", weightGuidance: ["5–7 kg each", "6–9 kg", "8–10 kg", "9–12 kg", "10–15 kg", "12–18 kg"], calorieBurn: { min: 20, max: 35 } },
+  { slug: "leg-press", name: "Leg Press Machine", muscleGroup: "Legs", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/leg-press.png", weightGuidance: ["25–35 kg", "30–45 kg", "40–50 kg", "45–60 kg", "50–70 kg", "60–80 kg"], calorieBurn: { min: 20, max: 35 } },
+  { slug: "leg-curl", name: "Lying Leg Curls", muscleGroup: "Hamstrings", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/leg-curl.png", weightGuidance: ["10–15 kg", "15–20 kg", "20–25 kg", "22.5–30 kg", "25–35 kg", "30–40 kg"], calorieBurn: { min: 15, max: 25 } },
+  { slug: "calf-raise", name: "Standing Calf Raises", muscleGroup: "Calves", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/calf-raise.png", weightGuidance: ["Bodyweight / 5 kg", "5–8 kg", "10 kg", "10–15 kg", "12–20 kg", "15–25 kg"], calorieBurn: { min: 10, max: 18 } },
+  { slug: "plank", name: "Plank", muscleGroup: "Core", defaultSets: 3, defaultRepsMin: 30, defaultRepsMax: 60, imageUrl: "/exercises/plank.png", calorieBurn: { min: 10, max: 15 } },
 
   { slug: "pull-ups", name: "Pull Ups", muscleGroup: "Back", defaultSets: 3, defaultRepsMin: 6, defaultRepsMax: 12 },
-  { slug: "shoulder-press", name: "Seated Shoulder Press Machine", muscleGroup: "Shoulders", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12, imageUrl: "/exercises/shoulder-press.png", weightGuidance: ["10–15 kg", "12.5–17.5 kg", "15–20 kg", "17.5–25 kg", "20–30 kg", "25–35 kg"] },
+  { slug: "shoulder-press", name: "Seated Shoulder Press Machine", muscleGroup: "Shoulders", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12, imageUrl: "/exercises/shoulder-press.png", weightGuidance: ["10–15 kg", "12.5–17.5 kg", "15–20 kg", "17.5–25 kg", "20–30 kg", "25–35 kg"], calorieBurn: { min: 15, max: 25 } },
   { slug: "chest-press", name: "Chest Press", muscleGroup: "Chest", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 12 },
   { slug: "one-arm-dumbbell-row", name: "One Arm Dumbbell Row", muscleGroup: "Back", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 12 },
   { slug: "rear-delt-fly", name: "Rear Delt Fly", muscleGroup: "Shoulders", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15 },
-  { slug: "hammer-curl", name: "Hammer Curls", muscleGroup: "Biceps", defaultSets: 2, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/hammer-curl.png", weightGuidance: ["4–5 kg", "5–7 kg", "6–8 kg", "7–10 kg", "8–12 kg", "10–14 kg"] },
-  { slug: "overhead-tricep-extension", name: "Overhead Dumbbell Triceps Extension", muscleGroup: "Triceps", defaultSets: 2, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/overhead-tricep-extension.png", weightGuidance: ["5–7 kg", "6–8 kg", "8–10 kg", "9–12 kg", "10–14 kg", "12–16 kg"] },
+  { slug: "hammer-curl", name: "Hammer Curls", muscleGroup: "Biceps", defaultSets: 2, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/hammer-curl.png", weightGuidance: ["4–5 kg", "5–7 kg", "6–8 kg", "7–10 kg", "8–12 kg", "10–14 kg"], calorieBurn: { min: 10, max: 18 } },
+  { slug: "overhead-tricep-extension", name: "Overhead Dumbbell Triceps Extension", muscleGroup: "Triceps", defaultSets: 2, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/overhead-tricep-extension.png", weightGuidance: ["5–7 kg", "6–8 kg", "8–10 kg", "9–12 kg", "10–14 kg", "12–16 kg"], calorieBurn: { min: 10, max: 18 } },
 
   { slug: "goblet-squat", name: "Goblet Squat", muscleGroup: "Legs", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 12 },
   { slug: "hip-thrust", name: "Hip Thrust", muscleGroup: "Glutes", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12 },
@@ -48,17 +50,17 @@ export const EXERCISE_CATALOG: CatalogExercise[] = [
 
   { slug: "split-squat", name: "Split Squat", muscleGroup: "Legs", defaultSets: 2, defaultRepsMin: 8, defaultRepsMax: 12 },
   { slug: "bench-press-machine-chest-press", name: "Bench Press / Machine Chest Press", muscleGroup: "Chest", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12 },
-  { slug: "pull-ups-assisted-pull-ups", name: "Bodyweight / Assisted Pull-Ups", muscleGroup: "Back", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12, imageUrl: "/exercises/pull-ups-assisted-pull-ups.png" },
+  { slug: "pull-ups-assisted-pull-ups", name: "Bodyweight / Assisted Pull-Ups", muscleGroup: "Back", defaultSets: 3, defaultRepsMin: 8, defaultRepsMax: 12, imageUrl: "/exercises/pull-ups-assisted-pull-ups.png", calorieBurn: { min: 15, max: 25 } },
 
   // Sleeper Build v2 — Push/Pull/Detail/Legs/Cardio 5-day split
-  { slug: "cable-chest-fly", name: "Cable Chest Flyes", muscleGroup: "Chest", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/cable-chest-fly.png", weightGuidance: ["2.5–5 kg/side", "4–6 kg", "5–7.5 kg", "6–8 kg", "7.5–10 kg", "7.5–12.5 kg"] },
-  { slug: "face-pull", name: "Cable Face Pulls", muscleGroup: "Shoulders", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/face-pull.png", weightGuidance: ["5–7.5 kg", "7.5–10 kg", "10–12.5 kg", "10–15 kg", "12.5–17.5 kg", "15–20 kg"] },
-  { slug: "incline-dumbbell-fly", name: "Dumbbell Incline Flyes", muscleGroup: "Chest", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/incline-dumbbell-fly.png", weightGuidance: ["2–4 kg", "3–5 kg", "4–6 kg", "5–7 kg", "6–8 kg", "6–10 kg"] },
-  { slug: "lean-away-lateral-raise", name: "Lean-Away Cable Lateral Raises", muscleGroup: "Shoulders", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/lean-away-lateral-raise.png", weightGuidance: ["1.5–2.5 kg", "2–3.5 kg", "2.5–5 kg", "3–5 kg", "4–6 kg", "4–7.5 kg"] },
-  { slug: "cable-woodchopper", name: "Cable Woodchoppers", muscleGroup: "Core", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/cable-woodchopper.png", weightGuidance: ["4–5 kg", "5–7.5 kg", "5–7.5 kg", "7.5–10 kg", "7.5–12.5 kg", "10–15 kg"] },
-  { slug: "hanging-leg-raise", name: "Hanging Leg / Knee Raises", muscleGroup: "Core", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/hanging-leg-raise.png" },
-  { slug: "incline-treadmill-walk", name: "Incline Treadmill Walk", muscleGroup: "Cardio", defaultSets: 1, defaultRepsMin: 20, defaultRepsMax: 30 },
-  { slug: "russian-twist", name: "Russian Twists", muscleGroup: "Core", defaultSets: 3, defaultRepsMin: 15, defaultRepsMax: 20, imageUrl: "/exercises/russian-twist.png" },
+  { slug: "cable-chest-fly", name: "Cable Chest Flyes", muscleGroup: "Chest", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/cable-chest-fly.png", weightGuidance: ["2.5–5 kg/side", "4–6 kg", "5–7.5 kg", "6–8 kg", "7.5–10 kg", "7.5–12.5 kg"], calorieBurn: { min: 12, max: 20 } },
+  { slug: "face-pull", name: "Cable Face Pulls", muscleGroup: "Shoulders", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/face-pull.png", weightGuidance: ["5–7.5 kg", "7.5–10 kg", "10–12.5 kg", "10–15 kg", "12.5–17.5 kg", "15–20 kg"], calorieBurn: { min: 12, max: 20 } },
+  { slug: "incline-dumbbell-fly", name: "Dumbbell Incline Flyes", muscleGroup: "Chest", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/incline-dumbbell-fly.png", weightGuidance: ["2–4 kg", "3–5 kg", "4–6 kg", "5–7 kg", "6–8 kg", "6–10 kg"], calorieBurn: { min: 12, max: 20 } },
+  { slug: "lean-away-lateral-raise", name: "Lean-Away Cable Lateral Raises", muscleGroup: "Shoulders", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/lean-away-lateral-raise.png", weightGuidance: ["1.5–2.5 kg", "2–3.5 kg", "2.5–5 kg", "3–5 kg", "4–6 kg", "4–7.5 kg"], calorieBurn: { min: 10, max: 18 } },
+  { slug: "cable-woodchopper", name: "Cable Woodchoppers", muscleGroup: "Core", defaultSets: 3, defaultRepsMin: 12, defaultRepsMax: 15, imageUrl: "/exercises/cable-woodchopper.png", weightGuidance: ["4–5 kg", "5–7.5 kg", "5–7.5 kg", "7.5–10 kg", "7.5–12.5 kg", "10–15 kg"], calorieBurn: { min: 15, max: 25 } },
+  { slug: "hanging-leg-raise", name: "Hanging Leg / Knee Raises", muscleGroup: "Core", defaultSets: 3, defaultRepsMin: 10, defaultRepsMax: 15, imageUrl: "/exercises/hanging-leg-raise.png", calorieBurn: { min: 12, max: 20 } },
+  { slug: "incline-treadmill-walk", name: "Incline Treadmill Walk", muscleGroup: "Cardio", defaultSets: 1, defaultRepsMin: 20, defaultRepsMax: 30, calorieBurn: { min: 190, max: 250 } },
+  { slug: "russian-twist", name: "Russian Twists", muscleGroup: "Core", defaultSets: 3, defaultRepsMin: 15, defaultRepsMax: 20, imageUrl: "/exercises/russian-twist.png", calorieBurn: { min: 12, max: 20 } },
 ];
 
 interface ScheduleExerciseSpec {
@@ -168,6 +170,8 @@ export async function ensureSeeded(): Promise<void> {
             defaultRepsMin: ex.defaultRepsMin,
             defaultRepsMax: ex.defaultRepsMax,
             weightGuidance: ex.weightGuidance ?? [],
+            calorieBurnMin: ex.calorieBurn?.min ?? null,
+            calorieBurnMax: ex.calorieBurn?.max ?? null,
           },
           $setOnInsert: { slug: ex.slug, isBuiltIn: true },
         },

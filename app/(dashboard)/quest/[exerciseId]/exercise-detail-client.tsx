@@ -12,7 +12,7 @@ import { QuestCompleteModal, type QuestCompleteData } from "@/components/quest/q
 import { updateSet, type ExerciseDetailDTO } from "@/actions/workout";
 import { showAchievementToast, showErrorToast, showXpPendingToast } from "@/lib/toast-system";
 import { formatDisplayDate } from "@/lib/dates";
-import type { WorkoutCalorieEstimate } from "@/lib/calories-burned";
+import type { CatalogCalorieEstimate } from "@/lib/calories-burned";
 
 export function ExerciseDetailClient({
   dailyWorkoutId,
@@ -25,7 +25,7 @@ export function ExerciseDetailClient({
   const [exercise, setExercise] = useState(initialDetail.exercise);
   const [prevStatus, setPrevStatus] = useState(initialDetail.workout.status);
   const [completeData, setCompleteData] = useState<QuestCompleteData | null>(null);
-  const [caloriesBurnedToday, setCaloriesBurnedToday] = useState<WorkoutCalorieEstimate | null>(
+  const [caloriesBurnedToday, setCaloriesBurnedToday] = useState<CatalogCalorieEstimate | null>(
     initialDetail.caloriesBurnedToday
   );
 

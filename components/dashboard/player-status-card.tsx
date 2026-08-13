@@ -17,6 +17,7 @@ export function PlayerStatusCard({ status }: { status: PlayerStatusDTO }) {
         <div>
           <SystemLabel accent>System Status</SystemLabel>
           <p className="heading-system mt-1 text-lg">{player.name.toUpperCase()}</p>
+          <p className="text-xs text-muted-foreground">{getRankTitle(player.rank)}</p>
         </div>
         <RankBadge rank={player.rank} size="lg" />
       </div>
@@ -38,24 +39,24 @@ export function PlayerStatusCard({ status }: { status: PlayerStatusDTO }) {
         )}
       </div>
 
-      <div className={cn("grid gap-3 border-t border-border/60 pt-4 text-center", bmi ? "grid-cols-4" : "grid-cols-3")}>
-        <div>
+      <div className="grid grid-cols-2 gap-y-3 border-t border-border/60 pt-4 text-center">
+        <div className="min-w-0">
           <Flame className="mx-auto mb-1 h-4 w-4 text-glow-cyan" />
           <p className="heading-system text-lg">{player.currentStreak}</p>
           <SystemLabel>Streak</SystemLabel>
         </div>
-        <div>
+        <div className="min-w-0">
           <Dumbbell className="mx-auto mb-1 h-4 w-4 text-glow-cyan" />
           <p className="heading-system text-lg">{player.totalWorkouts}</p>
           <SystemLabel>Quests</SystemLabel>
         </div>
-        <div>
+        <div className="min-w-0">
           <Trophy className="mx-auto mb-1 h-4 w-4 text-glow-cyan" />
           <p className="heading-system text-lg">{player.longestStreak}</p>
           <SystemLabel>Best</SystemLabel>
         </div>
         {bmi && (
-          <Link href="/diet">
+          <Link href="/diet" className="min-w-0">
             <Scale className={cn("mx-auto mb-1 h-4 w-4", BMI_CATEGORY_TONE[bmi.category])} />
             <p className={cn("heading-system text-lg", BMI_CATEGORY_TONE[bmi.category])}>{bmi.bmi}</p>
             <SystemLabel>BMI</SystemLabel>
