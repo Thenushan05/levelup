@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { LogOut, Shield, ClipboardCheck, Menu, UserCog } from "lucide-react";
+import { LogOut, Shield, ClipboardCheck, Menu, UserCog, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/nav";
 import { RankBadge } from "@/components/system/badges";
@@ -96,6 +96,9 @@ function AdminNavLinks({
       </NavLink>
       <NavLink href="/admin/users" active={isActive("/admin/users")} icon={UserCog} tone="violet" onClick={onNavigate}>
         Users
+      </NavLink>
+      <NavLink href="/admin/parties" active={isActive("/admin/parties")} icon={Users} tone="violet" onClick={onNavigate}>
+        Parties
       </NavLink>
     </div>
   );
