@@ -23,3 +23,16 @@ export const reactionSchema = z.object({
 });
 
 export type ReactionInput = z.infer<typeof reactionSchema>;
+
+export const activityCommentSchema = z.object({
+  notificationId: z.string().min(1),
+  text: z.string().trim().min(1, "Comment can't be empty").max(280, "Keep it under 280 characters"),
+});
+
+export type ActivityCommentInput = z.infer<typeof activityCommentSchema>;
+
+export const nudgeSchema = z.object({
+  memberUserId: z.string().min(1),
+});
+
+export type NudgeInput = z.infer<typeof nudgeSchema>;

@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Copy, Crown } from "lucide-react";
+import { useState, useRef, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Copy, Crown, Megaphone, Check, Trash2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { XpBar } from "@/components/system/hud-progress";
 import { RankBadge } from "@/components/system/badges";
 import { Button } from "@/components/ui/button";
-import { reactToActivity } from "@/actions/party";
+import { ConfirmDialog } from "@/components/system/confirm-dialog";
+import { reactToActivity, addActivityComment, nudgeMember, deleteParty } from "@/actions/party";
 import { showErrorToast, showSystemToast } from "@/lib/toast-system";
 import { getRankTitle } from "@/lib/ranks";
 import { cn } from "@/lib/utils";
@@ -45,8 +47,13 @@ export function PartyView({
   leaderboard: LeaderboardRowDTO[];
   levelLeaderboard: LevelLeaderboardRowDTO[];
 }) {
+  const router = useRouter();
   const [items, setItems] = useState(activity);
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [nudgedIds, setNudgedIds] = useState<Set<string>>(new Set());
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [, startTransition] = useTransition();
+  const nextOptimisticId = useRef(0);
 
   function handleReact(notificationId: string, emoji: (typeof REACTIONS)[number]) {
     setItems((prev) =>
@@ -75,11 +82,75 @@ export function PartyView({
     });
   }
 
+  function handleAddComment(notificationId: string) {
+    const text = (commentDrafts[notificationId] ?? "").trim();
+    if (!text) return;
+
+    setCommentDrafts((prev) => ({ ...prev, [notificationId]: "" }));
+    const optimisticId = `pending-${nextOptimisticId.current++}`;
+    setItems((prev) =>
+      prev.map((a) =>
+        a.id !== notificationId
+          ? a
+          : {
+              ...a,
+              comments: [...a.comments, { id: optimisticId, userName: "You", text, createdAt: new Date().toISOString() }],
+            }
+      )
+    );
+
+    startTransition(async () => {
+      try {
+        const created = await addActivityComment({ notificationId, text });
+        setItems((prev) =>
+          prev.map((a) =>
+            a.id !== notificationId ? a : { ...a, comments: a.comments.map((c) => (c.id === optimisticId ? created : c)) }
+          )
+        );
+      } catch (err) {
+        setItems((prev) =>
+          prev.map((a) => (a.id !== notificationId ? a : { ...a, comments: a.comments.filter((c) => c.id !== optimisticId) }))
+        );
+        showErrorToast(err instanceof Error ? err.message : "Unable to post comment.");
+      }
+    });
+  }
+
+  function handleNudge(memberUserId: string) {
+    setNudgedIds((prev) => new Set(prev).add(memberUserId));
+    startTransition(async () => {
+      try {
+        await nudgeMember({ memberUserId });
+        showSystemToast("Cheer sent 🔥");
+      } catch (err) {
+        setNudgedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(memberUserId);
+          return next;
+        });
+        showErrorToast(err instanceof Error ? err.message : "Unable to send cheer.");
+      }
+    });
+  }
+
   function copyInvite() {
     navigator.clipboard
       .writeText(party.inviteCode)
       .then(() => showSystemToast("Invite code copied"))
       .catch(() => {});
+  }
+
+  function handleDeleteParty() {
+    setDeleteConfirmOpen(false);
+    startTransition(async () => {
+      try {
+        await deleteParty(party.id);
+        showSystemToast("Party deleted");
+        router.refresh();
+      } catch (err) {
+        showErrorToast(err instanceof Error ? err.message : "Unable to delete party.");
+      }
+    });
   }
 
   return (
@@ -90,10 +161,34 @@ export function PartyView({
           <SystemHeading className="mt-1">{party.name}</SystemHeading>
           <p className="text-xs text-muted-foreground">{party.memberCount} MEMBERS</p>
         </div>
-        <Button variant="outline" onClick={copyInvite} className="heading-system tracking-widest">
-          <Copy className="h-4 w-4" /> {party.inviteCode}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={copyInvite} className="heading-system tracking-widest">
+            <Copy className="h-4 w-4" /> {party.inviteCode}
+          </Button>
+          {party.isOwner && (
+            <Button
+              variant="destructive"
+              size="icon"
+              onClick={() => setDeleteConfirmOpen(true)}
+              aria-label="Delete party"
+              title="Only the party's creator can delete it"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </SystemPanel>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title={`Delete "${party.name}"?`}
+        description={`This removes the party for all ${party.memberCount} member${party.memberCount === 1 ? "" : "s"} and clears its activity feed. This can't be undone.`}
+        confirmLabel="DELETE PARTY"
+        cancelLabel="CANCEL"
+        variant="destructive"
+        onConfirm={handleDeleteParty}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
 
       <Tabs defaultValue="members">
         <TabsList>
@@ -111,15 +206,46 @@ export function PartyView({
                   {m.name.slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <p className="heading-system text-sm">{m.name}</p>
+                  <p className="heading-system flex items-center gap-1.5 text-sm">
+                    {m.name}
+                    {m.isMvp && (
+                      <span title="MVP of the week — #1 on this week's leaderboard">
+                        <Crown className="h-3.5 w-3.5 text-rank" />
+                      </span>
+                    )}
+                  </p>
                   <SystemLabel>
                     LEVEL {m.level} · {m.rank} RANK · {getRankTitle(m.rank as Rank).toUpperCase()}
                   </SystemLabel>
+                  <p className="text-[11px] text-muted-foreground">
+                    {m.templateName ?? "No active routine"}
+                  </p>
                 </div>
               </div>
-              <span className={cn("label-system shrink-0", m.todayStatus === "complete" && "text-success")}>
-                {STATUS_LABEL[m.todayStatus]}
-              </span>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className={cn("label-system", m.todayStatus === "complete" && "text-success")}>
+                  {STATUS_LABEL[m.todayStatus]}
+                </span>
+                {!m.isMe && m.todayStatus === "not_started" && (
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    disabled={nudgedIds.has(m.userId)}
+                    onClick={() => handleNudge(m.userId)}
+                    title="Send a cheer to nudge them toward today's quest"
+                  >
+                    {nudgedIds.has(m.userId) ? (
+                      <>
+                        <Check className="h-3 w-3" /> CHEERED
+                      </>
+                    ) : (
+                      <>
+                        <Megaphone className="h-3 w-3" /> CHEER
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </SystemPanel>
           ))}
         </TabsContent>
@@ -180,6 +306,42 @@ export function PartyView({
                     );
                   })}
                 </div>
+
+                {a.comments.length > 0 && (
+                  <div className="space-y-1 border-t border-border/60 pt-2">
+                    {a.comments.map((c) => (
+                      <p key={c.id} className="text-xs">
+                        <span className="heading-system text-muted-foreground">{c.userName}</span>{" "}
+                        <span className="text-foreground">{c.text}</span>
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleAddComment(a.id);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={commentDrafts[a.id] ?? ""}
+                    onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                    placeholder="Reply..."
+                    maxLength={280}
+                    className="h-7 flex-1 rounded-md border border-input bg-transparent px-2 text-xs outline-none focus:border-primary"
+                  />
+                  <Button
+                    type="submit"
+                    size="xs"
+                    variant="outline"
+                    disabled={!(commentDrafts[a.id] ?? "").trim()}
+                  >
+                    Reply
+                  </Button>
+                </form>
               </SystemPanel>
             ))
           )}

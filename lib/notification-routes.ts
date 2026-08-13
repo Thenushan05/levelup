@@ -8,6 +8,7 @@ export function notificationTarget(type: NotificationType, meta: Record<string, 
   switch (type) {
     case "objective_complete":
     case "quest_available":
+    case "nudge":
       return "/quest";
     case "quest_complete":
     case "party_quest_complete":
