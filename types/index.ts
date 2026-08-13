@@ -25,6 +25,7 @@ export type NotificationType =
   | "party_quest_complete"
   | "party_level_up"
   | "party_achievement"
+  | "party_objective_complete"
   | "nudge";
 
 export interface SetDTO {

@@ -7,6 +7,7 @@ import type { NotificationType } from "@/types";
 export function notificationTarget(type: NotificationType, meta: Record<string, unknown>): string | null {
   switch (type) {
     case "objective_complete":
+    case "party_objective_complete":
     case "quest_available":
     case "nudge":
       return "/quest";

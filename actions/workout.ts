@@ -233,10 +233,14 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
     exercise.xpAwarded = true;
     await queueXpAward(user._id, XP_VALUES.EXERCISE_COMPLETE, "exercise_complete", exercise.name);
     xpPending += XP_VALUES.EXERCISE_COMPLETE;
-    await notifyUser(user._id.toString(), "objective_complete", "Objective Complete", `${exercise.name} · +${XP_VALUES.EXERCISE_COMPLETE} XP pending approval`, {
-      xp: XP_VALUES.EXERCISE_COMPLETE,
-      pending: true,
-    });
+    await notifyUserAndParty(
+      { id: user._id.toString(), name: user.name },
+      "objective_complete",
+      "party_objective_complete",
+      `${user.name} completed ${exercise.name}.`,
+      `+${XP_VALUES.EXERCISE_COMPLETE} XP pending approval`,
+      { xp: XP_VALUES.EXERCISE_COMPLETE, pending: true }
+    );
   }
 
   workout.completedExercises = workout.exercises.filter((e) => e.status === "complete").length;
