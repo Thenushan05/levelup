@@ -18,7 +18,7 @@ import type { PlayerStatusDTO } from "@/actions/player";
 import type { AttendanceStatusDTO } from "@/actions/attendance";
 import type { WeeklyQuestStatusDTO } from "@/actions/progress";
 import type { PartySummaryDTO, PartyActivityDTO } from "@/actions/party";
-import type { WorkoutCalorieEstimate } from "@/lib/calories-burned";
+import type { DailyCalorieProgressDTO } from "@/actions/workout";
 import type { DailyWorkoutDTO } from "@/types";
 
 export function DashboardClient({
@@ -28,7 +28,7 @@ export function DashboardClient({
   weekly,
   party,
   activity,
-  caloriesBurnedToday,
+  calorieProgress,
 }: {
   status: PlayerStatusDTO;
   quest: DailyWorkoutDTO | null;
@@ -36,7 +36,7 @@ export function DashboardClient({
   weekly: WeeklyQuestStatusDTO | null;
   party: PartySummaryDTO | null;
   activity: PartyActivityDTO[];
-  caloriesBurnedToday: WorkoutCalorieEstimate | null;
+  calorieProgress: DailyCalorieProgressDTO;
 }) {
   return (
     <div className="space-y-6">
@@ -57,16 +57,16 @@ export function DashboardClient({
         </SystemPanel>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-12">
+      <div className="grid items-start gap-6 lg:grid-cols-12">
         <div className="lg:col-span-3">
           <PlayerStatusCard status={status} />
         </div>
         <div className="space-y-6 lg:col-span-6">
-          <DailyQuestCard quest={quest} caloriesBurnedToday={caloriesBurnedToday} />
-          <HealthLevelGauge level={status.player.level} xp={status.player.xp} requiredXp={status.player.requiredXp} />
+          <DailyQuestCard quest={quest} />
+          <HealthLevelGauge quest={quest} burned={calorieProgress.burned} target={calorieProgress.target} />
         </div>
         <div className="space-y-6 lg:col-span-3">
-          <AttendanceCard initial={attendance} />
+          <AttendanceCard initial={attendance} restDay={quest?.type === "rest"} />
           <WeeklyQuestCard weekly={weekly} />
           <StreakCard current={status.player.currentStreak} longest={status.player.longestStreak} />
         </div>

@@ -20,6 +20,20 @@ export function getRankForLevel(level: number): Rank {
   return match?.rank ?? "E";
 }
 
+/** Flavor title shown alongside the rank letter, following the Hunter Association's tiering. */
+export const RANK_TITLES: Record<Rank, string> = {
+  E: "Novice Hunter",
+  D: "Rookie Hunter",
+  C: "Recognized Hunter",
+  B: "Elite Hunter",
+  A: "Peak Hunter",
+  S: "National-Level Hunter",
+};
+
+export function getRankTitle(rank: Rank): string {
+  return RANK_TITLES[rank];
+}
+
 export function getRankProgress(level: number): {
   rank: Rank;
   nextRank: Rank | null;

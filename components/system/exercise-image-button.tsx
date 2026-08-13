@@ -27,10 +27,14 @@ export function ExerciseImageButton({ imageUrl, name }: { imageUrl: string; name
         View
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-2xl">
           <DialogTitle>{name}</DialogTitle>
           {/* eslint-disable-next-line @next/next/no-img-element -- local /public asset, no remote-image config needed */}
-          <img src={imageUrl} alt={name} className="w-full rounded-lg border border-border object-contain" />
+          <img
+            src={imageUrl}
+            alt={name}
+            className="max-h-[75vh] w-full rounded-lg border border-border object-contain"
+          />
         </DialogContent>
       </Dialog>
     </>

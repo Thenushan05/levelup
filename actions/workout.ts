@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { Types } from "mongoose";
 import { DailyWorkout } from "@/models/DailyWorkout";
 import { WorkoutTemplate } from "@/models/WorkoutTemplate";
+import { Exercise } from "@/models/Exercise";
 import { requireUserDoc } from "@/lib/session";
 import { todayKey, dayOfWeekFromKey, weekRange, isoWeekKey } from "@/lib/dates";
 import { queueXpAward, XP_VALUES } from "@/lib/xp";
@@ -11,7 +13,7 @@ import { recomputeStreak } from "@/lib/streak";
 import { toDailyWorkoutDTO } from "@/lib/dto";
 import { notifyUserAndParty, notifyUser } from "@/lib/notify";
 import { updateSetSchema, exerciseNotesSchema, type UpdateSetInput, type ExerciseNotesInput } from "@/lib/validations/workout";
-import { caloriesBurnedSoFar, type WorkoutCalorieEstimate } from "@/lib/calories-burned";
+import { sumCompletedExerciseCalories, sumAllExerciseCalories, type CatalogCalorieEstimate } from "@/lib/calories-burned";
 import type { AchievementUnlockedDTO, DailyWorkoutDTO } from "@/types";
 
 export interface QuestActionResult {
@@ -20,9 +22,59 @@ export interface QuestActionResult {
   xpPending: number;
   achievementsUnlocked: AchievementUnlockedDTO[];
   weeklyQuestCompleted: boolean;
-  /** Real elapsed-time calorie burn as of this action — null if body stats
-   * aren't on file yet. Climbs with every logged set, not just at the end. */
-  caloriesBurnedToday: WorkoutCalorieEstimate | null;
+  /** Sum of each completed exercise's fixed catalog calorie range — null if
+   * nothing completed yet has a figure. Climbs one exercise at a time, not
+   * a weight/duration formula. */
+  caloriesBurnedToday: CatalogCalorieEstimate | null;
+}
+
+/**
+ * Joins each of a workout's exercises to its shared Exercise doc's fixed calorie range.
+ * Shared by every action below that reports on "today's burn" so there's one place doing it.
+ */
+async function joinExerciseCalories(
+  exercises: { exerciseId: Types.ObjectId; status: string }[]
+): Promise<{ status: string; calorieBurnMin: number | null; calorieBurnMax: number | null }[]> {
+  const catalogDocs = await Exercise.find({ _id: { $in: exercises.map((e) => e.exerciseId) } })
+    .select("calorieBurnMin calorieBurnMax")
+    .lean();
+  const byId = new Map(catalogDocs.map((d) => [d._id.toString(), d]));
+
+  return exercises.map((e) => {
+    const doc = byId.get(e.exerciseId.toString());
+    return {
+      status: e.status,
+      calorieBurnMin: doc?.calorieBurnMin ?? null,
+      calorieBurnMax: doc?.calorieBurnMax ?? null,
+    };
+  });
+}
+
+async function calorieEstimateForWorkout(workout: {
+  type: "workout" | "rest" | "optional";
+  exercises: { exerciseId: Types.ObjectId; status: string }[];
+}): Promise<CatalogCalorieEstimate | null> {
+  if (workout.type !== "workout") return null;
+  return sumCompletedExerciseCalories(await joinExerciseCalories(workout.exercises));
+}
+
+export interface DailyCalorieProgressDTO {
+  /** Sum over exercises actually completed so far. */
+  burned: CatalogCalorieEstimate | null;
+  /** Sum over every exercise scheduled today, regardless of completion — "if I finish the
+   * whole routine, this many calories total." Powers the calorie-burn gauge on the dashboard. */
+  target: CatalogCalorieEstimate | null;
+}
+
+/** Today's burned-vs-target calorie progress, for the dashboard's calorie-burn gauge. No
+ * body stats required — the catalog figures aren't weight-scaled. */
+export async function getTodayCalorieProgress(): Promise<DailyCalorieProgressDTO> {
+  const user = await requireUserDoc();
+  const workout = await DailyWorkout.findOne({ userId: user._id, date: todayKey() }).lean();
+  if (!workout || workout.type !== "workout") return { burned: null, target: null };
+
+  const joined = await joinExerciseCalories(workout.exercises);
+  return { burned: sumCompletedExerciseCalories(joined), target: sumAllExerciseCalories(joined) };
 }
 
 /** Resolves (creating if needed) today's DailyWorkout from the user's active template. */
@@ -86,23 +138,6 @@ export async function getTodayQuest(): Promise<DailyWorkoutDTO | null> {
     const raced = await DailyWorkout.findOne({ userId: user._id, date }).lean();
     return raced ? toDailyWorkoutDTO(raced) : null;
   }
-}
-
-/** Today's calorie burn, for the dashboard — same real elapsed-time math as
- * the exercise-detail page, so the figure matches wherever it's shown. */
-export async function getTodayCaloriesBurned(): Promise<WorkoutCalorieEstimate | null> {
-  const user = await requireUserDoc();
-  if (user.weightKg == null) return null;
-
-  const workout = await DailyWorkout.findOne({ userId: user._id, date: todayKey() }).lean();
-  if (!workout) return null;
-
-  return caloriesBurnedSoFar({
-    weightKg: user.weightKg,
-    type: workout.type,
-    startedAt: workout.startedAt ?? null,
-    asOf: workout.status === "complete" ? workout.completedAt ?? null : new Date(),
-  });
 }
 
 export async function startQuest(dailyWorkoutId: string): Promise<DailyWorkoutDTO | null> {
@@ -277,15 +312,7 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
   revalidatePath("/quest");
   revalidatePath("/diet");
 
-  const caloriesBurnedToday =
-    user.weightKg != null
-      ? caloriesBurnedSoFar({
-          weightKg: user.weightKg,
-          type: workout.type,
-          startedAt: workout.startedAt,
-          asOf: workout.completedAt ?? now,
-        })
-      : null;
+  const caloriesBurnedToday = await calorieEstimateForWorkout(workout);
 
   return {
     workout: toDailyWorkoutDTO(workout.toObject()),
@@ -332,7 +359,7 @@ export interface ExerciseDetailDTO {
   exercise: DailyWorkoutDTO["exercises"][number];
   previousSets: { setNumber: number; weight: number | null; reps: number | null }[];
   previousDate: string | null;
-  caloriesBurnedToday: WorkoutCalorieEstimate | null;
+  caloriesBurnedToday: CatalogCalorieEstimate | null;
 }
 
 export async function getExerciseDetail(
@@ -371,15 +398,7 @@ export async function getExerciseDetail(
   const dto = toDailyWorkoutDTO(workout);
   const exercise = dto.exercises.find((e) => e.id === exerciseEntryId)!;
 
-  const caloriesBurnedToday =
-    user.weightKg != null
-      ? caloriesBurnedSoFar({
-          weightKg: user.weightKg,
-          type: workout.type,
-          startedAt: workout.startedAt ?? null,
-          asOf: workout.completedAt ?? new Date(),
-        })
-      : null;
+  const caloriesBurnedToday = await calorieEstimateForWorkout(workout);
 
   return { workout: dto, exercise, previousSets, previousDate, caloriesBurnedToday };
 }

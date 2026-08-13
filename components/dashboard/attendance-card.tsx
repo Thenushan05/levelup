@@ -9,7 +9,14 @@ import { checkIn, type AttendanceStatusDTO } from "@/actions/attendance";
 import { formatTime } from "@/lib/dates";
 import { showAchievementToast, showErrorToast, showXpPendingToast } from "@/lib/toast-system";
 
-export function AttendanceCard({ initial }: { initial: AttendanceStatusDTO }) {
+export function AttendanceCard({
+  initial,
+  restDay = false,
+}: {
+  initial: AttendanceStatusDTO;
+  /** Today's scheduled day is a rest day — check-in isn't needed/allowed. */
+  restDay?: boolean;
+}) {
   const [status, setStatus] = useState(initial);
   const [pending, startTransition] = useTransition();
 
@@ -42,7 +49,10 @@ export function AttendanceCard({ initial }: { initial: AttendanceStatusDTO }) {
           <p className="heading-system text-sm text-muted-foreground">NOT CHECKED IN</p>
         )}
       </div>
-      {!status.checkedIn && (
+      {!status.checkedIn && restDay && (
+        <p className="text-xs text-muted-foreground">Rest day — no check-in needed. Recover and come back tomorrow.</p>
+      )}
+      {!status.checkedIn && !restDay && (
         <Button onClick={handleCheckIn} disabled={pending} className="w-full heading-system tracking-widest">
           {pending ? "CHECKING IN..." : "CHECK IN"}
         </Button>

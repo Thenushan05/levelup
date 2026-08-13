@@ -6,7 +6,7 @@ import { Flame } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { formatDuration } from "@/lib/dates";
-import type { WorkoutCalorieEstimate } from "@/lib/calories-burned";
+import type { CatalogCalorieEstimate } from "@/lib/calories-burned";
 import type { AchievementUnlockedDTO, DailyWorkoutDTO } from "@/types";
 
 export interface QuestCompleteData {
@@ -14,7 +14,7 @@ export interface QuestCompleteData {
   xp: number;
   achievements: AchievementUnlockedDTO[];
   weeklyQuestCompleted: boolean;
-  caloriesBurnedToday: WorkoutCalorieEstimate | null;
+  caloriesBurnedToday: CatalogCalorieEstimate | null;
 }
 
 export function QuestCompleteModal({

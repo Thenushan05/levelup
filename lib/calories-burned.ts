@@ -61,6 +61,49 @@ export function lightActivityCalorieRange(weightKg: number): { low: number; high
   return { low: Math.round(perMin * 20), high: Math.round(perMin * 45) };
 }
 
+export interface CatalogCalorieEstimate {
+  /** Midpoint of minKcal/maxKcal — the single number the UI shows. */
+  kcal: number;
+  minKcal: number;
+  maxKcal: number;
+}
+
+/**
+ * Sums the fixed per-exercise calorie range (Exercise.calorieBurnMin/Max — a flat lookup
+ * table, not a formula) across every exercise marked "complete" in a workout. This is what
+ * actually drives "today's burn" on the dashboard/quest pages: it only counts what you've
+ * actually finished, and grows one exercise at a time as you complete each one — never a
+ * weight- or duration-based guess. Exercises with no catalog figure yet are skipped, not
+ * treated as zero. Returns null if nothing completed (yet) has a figure to add up.
+ */
+function sumExerciseCalories(
+  exercises: { calorieBurnMin: number | null; calorieBurnMax: number | null }[]
+): CatalogCalorieEstimate | null {
+  const withData = exercises.filter((e) => e.calorieBurnMin != null && e.calorieBurnMax != null);
+  if (withData.length === 0) return null;
+
+  const minKcal = withData.reduce((sum, e) => sum + (e.calorieBurnMin as number), 0);
+  const maxKcal = withData.reduce((sum, e) => sum + (e.calorieBurnMax as number), 0);
+  return { kcal: Math.round((minKcal + maxKcal) / 2), minKcal, maxKcal };
+}
+
+export function sumCompletedExerciseCalories(
+  exercises: { status: string; calorieBurnMin: number | null; calorieBurnMax: number | null }[]
+): CatalogCalorieEstimate | null {
+  return sumExerciseCalories(exercises.filter((e) => e.status === "complete"));
+}
+
+/**
+ * Sums the same fixed per-exercise ranges across *every* exercise scheduled today, regardless
+ * of completion — i.e. "if I finish today's whole routine, this is the total." Paired with
+ * sumCompletedExerciseCalories() to drive a burned-so-far-vs-today's-target gauge.
+ */
+export function sumAllExerciseCalories(
+  exercises: { calorieBurnMin: number | null; calorieBurnMax: number | null }[]
+): CatalogCalorieEstimate | null {
+  return sumExerciseCalories(exercises);
+}
+
 /**
  * Real-time calorie burn "so far" for a workout that's still in progress —
  * elapsed time between when it was started and `asOf` (pass the current

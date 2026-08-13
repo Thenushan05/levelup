@@ -1,4 +1,5 @@
 import { RankBadge } from "@/components/system/badges";
+import { getRankTitle } from "@/lib/ranks";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { XpBar } from "@/components/system/hud-progress";
@@ -16,6 +17,7 @@ export function PlayerStatusView({ status }: { status: PlayerStatusDTO }) {
         <SystemHeading className="text-2xl">{player.name}</SystemHeading>
         <RankBadge rank={player.rank} size="lg" />
         <p className="heading-system text-3xl text-glow-cyan">LEVEL {player.level}</p>
+        <p className="label-system-accent">{getRankTitle(player.rank)}</p>
         <p className="label-system">
           RANK {player.rank}
           {nextRank ? ` · ${levelsToNextRank} LEVELS TO ${nextRank} RANK` : " · MAX RANK"}

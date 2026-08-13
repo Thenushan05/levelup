@@ -10,7 +10,9 @@ import { RankBadge } from "@/components/system/badges";
 import { Button } from "@/components/ui/button";
 import { reactToActivity } from "@/actions/party";
 import { showErrorToast, showSystemToast } from "@/lib/toast-system";
+import { getRankTitle } from "@/lib/ranks";
 import { cn } from "@/lib/utils";
+import type { Rank } from "@/types";
 import type {
   PartySummaryDTO,
   PartyMemberDTO,
@@ -111,7 +113,7 @@ export function PartyView({
                 <div>
                   <p className="heading-system text-sm">{m.name}</p>
                   <SystemLabel>
-                    LEVEL {m.level} · {m.rank} RANK
+                    LEVEL {m.level} · {m.rank} RANK · {getRankTitle(m.rank as Rank).toUpperCase()}
                   </SystemLabel>
                 </div>
               </div>
@@ -140,6 +142,7 @@ export function PartyView({
                   {row.name}
                   {row.isMe && <span className="ml-1.5 text-xs text-muted-foreground">(YOU)</span>}
                 </p>
+                <SystemLabel>{getRankTitle(row.rank)}</SystemLabel>
                 <XpBar xp={row.xp} requiredXp={row.requiredXp} />
               </div>
               <span className="label-system-accent shrink-0">LV.{row.level}</span>

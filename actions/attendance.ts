@@ -1,13 +1,25 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { HydratedDocument } from "mongoose";
 import { Attendance } from "@/models/Attendance";
+import { WorkoutTemplate } from "@/models/WorkoutTemplate";
 import { requireUserDoc } from "@/lib/session";
-import { todayKey, formatTime } from "@/lib/dates";
+import { todayKey, dayOfWeekFromKey, formatTime } from "@/lib/dates";
 import { queueXpAward, XP_VALUES } from "@/lib/xp";
 import { checkAndUnlockAchievements } from "@/lib/achievements";
 import { notifyUserAndParty } from "@/lib/notify";
+import type { UserDoc } from "@/models/User";
 import type { AchievementUnlockedDTO } from "@/types";
+
+/** True if today's scheduled day (per the user's active template) is a rest day. No active template / no matching day = not a rest day. */
+async function isTodayRestDay(user: HydratedDocument<UserDoc>): Promise<boolean> {
+  if (!user.activeTemplateId) return false;
+  const template = await WorkoutTemplate.findById(user.activeTemplateId).select("schedule").lean();
+  if (!template) return false;
+  const entry = template.schedule.find((d) => d.dayOfWeek === dayOfWeekFromKey(todayKey()));
+  return entry?.type === "rest";
+}
 
 export interface AttendanceStatusDTO {
   checkedIn: boolean;
@@ -36,6 +48,11 @@ export interface CheckInResult {
  */
 export async function checkIn(): Promise<CheckInResult> {
   const user = await requireUserDoc();
+
+  if (await isTodayRestDay(user)) {
+    throw new Error("It's a rest day — no check-in needed. Recover and come back tomorrow.");
+  }
+
   const date = todayKey();
   const checkedInAt = new Date();
 
