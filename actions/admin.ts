@@ -57,6 +57,7 @@ export interface TemplateEditDayDTO {
     targetRepsMax: number;
     repsUnit: "reps" | "seconds";
     perSide: boolean;
+    imageUrl: string | null;
   }[];
 }
 
@@ -74,6 +75,12 @@ export async function getTemplateForEdit(id: string): Promise<TemplateEditDTO | 
   const t = await WorkoutTemplate.findById(id).lean();
   if (!t) return null;
 
+  // Images live on the shared Exercise doc, not on the template's denormalized
+  // exercise snapshot, so join them back in for the form to display.
+  const exerciseIds = t.schedule.flatMap((d) => d.exercises.map((e) => e.exerciseId));
+  const exercises = await Exercise.find({ _id: { $in: exerciseIds } }).lean();
+  const imageById = new Map(exercises.map((e) => [e._id.toString(), e.imageUrl ?? null]));
+
   return {
     id: t._id.toString(),
     name: t.name,
@@ -90,6 +97,7 @@ export async function getTemplateForEdit(id: string): Promise<TemplateEditDTO | 
         targetRepsMax: e.targetRepsMax,
         repsUnit: (e.repsUnit as "reps" | "seconds") ?? "reps",
         perSide: e.perSide ?? false,
+        imageUrl: imageById.get(e.exerciseId.toString()) ?? null,
       })),
     })),
   };
@@ -105,18 +113,31 @@ function slugify(name: string): string {
   );
 }
 
-/** Reuses a catalog exercise by case-insensitive name match, or creates a new one — this is what makes the exercise library grow as admins build templates. */
-async function resolveExerciseId(name: string, muscleGroup: string): Promise<Types.ObjectId> {
+/**
+ * Reuses a catalog exercise by case-insensitive name match, or creates a new one — this is what makes the
+ * exercise library grow as admins build templates. A provided imageUrl is written onto the Exercise doc
+ * (create or update) so the image follows that exercise into every template that reuses it, not just the
+ * one being saved.
+ */
+async function resolveExerciseId(name: string, muscleGroup: string, imageUrl?: string): Promise<Types.ObjectId> {
   const trimmedName = name.trim();
   const escaped = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const cleanImageUrl = imageUrl?.trim() || undefined;
 
   const existing = await Exercise.findOne({ name: new RegExp(`^${escaped}$`, "i") });
-  if (existing) return existing._id;
+  if (existing) {
+    if (cleanImageUrl && cleanImageUrl !== existing.imageUrl) {
+      existing.imageUrl = cleanImageUrl;
+      await existing.save();
+    }
+    return existing._id;
+  }
 
   const created = await Exercise.create({
     slug: slugify(trimmedName),
     name: trimmedName,
     muscleGroup: muscleGroup.trim() || "General",
+    imageUrl: cleanImageUrl ?? null,
     isBuiltIn: false,
   });
   return created._id;
@@ -134,7 +155,7 @@ async function buildScheduleDocs(days: TemplateFormInput["schedule"]) {
         day.type === "workout"
           ? await Promise.all(
               day.exercises.map(async (ex) => ({
-                exerciseId: await resolveExerciseId(ex.name, ex.muscleGroup),
+                exerciseId: await resolveExerciseId(ex.name, ex.muscleGroup, ex.imageUrl),
                 name: ex.name.trim(),
                 muscleGroup: ex.muscleGroup.trim() || "General",
                 targetSets: ex.targetSets,

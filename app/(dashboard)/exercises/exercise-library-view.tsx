@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Dumbbell } from "lucide-react";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
+import { ExerciseImageButton } from "@/components/system/exercise-image-button";
 import { cn } from "@/lib/utils";
 import type { ExerciseLibraryItemDTO } from "@/actions/progress";
 
@@ -55,10 +56,11 @@ export function ExerciseLibraryView({ exercises }: { exercises: ExerciseLibraryI
           <Link key={ex.slug} href={`/exercises/${ex.slug}`}>
             <SystemPanel noMotion className="flex items-center gap-3 transition-colors hover:bg-accent/40">
               <Dumbbell className="h-5 w-5 shrink-0 text-glow-cyan" />
-              <div>
+              <div className="flex-1">
                 <p className="heading-system text-sm">{ex.name}</p>
                 <SystemLabel>{ex.muscleGroup}</SystemLabel>
               </div>
+              {ex.imageUrl && <ExerciseImageButton imageUrl={ex.imageUrl} name={ex.name} />}
             </SystemPanel>
           </Link>
         ))}

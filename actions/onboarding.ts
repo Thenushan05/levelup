@@ -4,6 +4,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ensureSeeded } from "@/lib/seed";
 import { WorkoutTemplate } from "@/models/WorkoutTemplate";
 import { DailyWorkout } from "@/models/DailyWorkout";
+import { Exercise } from "@/models/Exercise";
+import { pickWeightGuidance } from "@/lib/weight-guidance";
 import { requireUserDoc } from "@/lib/session";
 import { onboardingSchema, type OnboardingInput } from "@/lib/validations/onboarding";
 import { toPlayerSummary } from "@/lib/dto";
@@ -84,6 +86,9 @@ export interface RoutineDayDTO {
     targetRepsMax: number;
     repsUnit: "reps" | "seconds";
     perSide: boolean;
+    imageUrl: string | null;
+    /** Suggested weight for this user's saved body weight, or null if no data / no saved weight. */
+    suggestedWeight: string | null;
   }[];
 }
 
@@ -101,6 +106,13 @@ export async function getActiveRoutineDetail(): Promise<ActiveRoutineDTO | null>
   const template = await WorkoutTemplate.findById(user.activeTemplateId).lean();
   if (!template) return null;
 
+  // Images and weight guidance live on the shared Exercise doc, not on the template's
+  // denormalized exercise snapshot, so join them back in here (see actions/admin.ts's
+  // getTemplateForEdit, which does the same for the admin editor).
+  const exerciseIds = template.schedule.flatMap((d) => d.exercises.map((e) => e.exerciseId));
+  const exercises = await Exercise.find({ _id: { $in: exerciseIds } }).lean();
+  const exerciseById = new Map(exercises.map((e) => [e._id.toString(), e]));
+
   return {
     slug: template.slug,
     name: template.name,
@@ -109,15 +121,20 @@ export async function getActiveRoutineDetail(): Promise<ActiveRoutineDTO | null>
       dayOfWeek: d.dayOfWeek,
       label: d.label,
       type: d.type as DayType,
-      exercises: d.exercises.map((e) => ({
-        name: e.name,
-        muscleGroup: e.muscleGroup,
-        targetSets: e.targetSets,
-        targetRepsMin: e.targetRepsMin,
-        targetRepsMax: e.targetRepsMax,
-        repsUnit: (e.repsUnit as "reps" | "seconds") ?? "reps",
-        perSide: e.perSide ?? false,
-      })),
+      exercises: d.exercises.map((e) => {
+        const exercise = exerciseById.get(e.exerciseId.toString());
+        return {
+          name: e.name,
+          muscleGroup: e.muscleGroup,
+          targetSets: e.targetSets,
+          targetRepsMin: e.targetRepsMin,
+          targetRepsMax: e.targetRepsMax,
+          repsUnit: (e.repsUnit as "reps" | "seconds") ?? "reps",
+          perSide: e.perSide ?? false,
+          imageUrl: exercise?.imageUrl ?? null,
+          suggestedWeight: pickWeightGuidance(exercise?.weightGuidance, user.weightKg),
+        };
+      }),
     })),
   };
 }
