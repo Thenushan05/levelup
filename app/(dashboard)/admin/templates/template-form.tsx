@@ -24,6 +24,7 @@ interface ExerciseFormState {
   targetRepsMax: number;
   repsUnit: "reps" | "seconds";
   perSide: boolean;
+  imageUrl: string;
 }
 
 interface DayFormState {
@@ -51,6 +52,7 @@ function emptyExercise(): ExerciseFormState {
     targetRepsMax: 12,
     repsUnit: "reps",
     perSide: false,
+    imageUrl: "",
   };
 }
 
@@ -79,7 +81,7 @@ export function TemplateForm({
         dayOfWeek: dow,
         type: d?.type ?? "rest",
         label: d?.label ?? "",
-        exercises: (d?.exercises ?? []).map((e) => ({ ...e, key: randomKey() })),
+        exercises: (d?.exercises ?? []).map((e) => ({ ...e, imageUrl: e.imageUrl ?? "", key: randomKey() })),
       };
     });
   });
@@ -146,6 +148,7 @@ export function TemplateForm({
           targetRepsMax: e.targetRepsMax,
           repsUnit: e.repsUnit,
           perSide: e.perSide,
+          imageUrl: e.imageUrl.trim(),
         })),
       })),
     };
@@ -232,9 +235,9 @@ export function TemplateForm({
             {day.type === "workout" && (
               <div className="space-y-2.5">
                 {day.exercises.map((ex) => (
+                  <div key={ex.key} className="space-y-2 rounded-lg border border-border p-2.5">
                   <div
-                    key={ex.key}
-                    className="grid grid-cols-2 items-center gap-2 rounded-lg border border-border p-2.5 sm:grid-cols-12"
+                    className="grid grid-cols-2 items-center gap-2 sm:grid-cols-12"
                   >
                     <input
                       list="exercise-names"
@@ -308,6 +311,25 @@ export function TemplateForm({
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {ex.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element -- local /public asset, no remote-image config needed
+                      <img
+                        src={ex.imageUrl}
+                        alt=""
+                        className="h-8 w-8 shrink-0 rounded-md border border-border object-cover"
+                      />
+                    )}
+                    <input
+                      type="text"
+                      value={ex.imageUrl}
+                      onChange={(e) => updateExercise(day.dayOfWeek, ex.key, { imageUrl: e.target.value })}
+                      placeholder="/exercises/bench-press.jpg"
+                      title="Image path (drop the file in public/exercises/)"
+                      className="h-8 flex-1 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus:border-primary"
+                    />
+                  </div>
                   </div>
                 ))}
                 <Button

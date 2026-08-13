@@ -2,6 +2,7 @@ import { CalendarRange } from "lucide-react";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { EmptyState } from "@/components/system/empty-state";
+import { ExerciseImageButton } from "@/components/system/exercise-image-button";
 import { dayLabel } from "@/lib/dates";
 import type { ActiveRoutineDTO } from "@/actions/onboarding";
 
@@ -45,11 +46,22 @@ export function RoutineView({ routine }: { routine: ActiveRoutineDTO | null }) {
             </div>
             <p className="heading-system text-base">{day.label}</p>
             {day.exercises.length > 0 ? (
-              <ul className="space-y-1.5 text-sm">
+              <ul className="space-y-2 text-sm">
                 {day.exercises.map((ex) => (
-                  <li key={ex.name} className="flex items-center justify-between gap-2 text-muted-foreground">
-                    <span className="text-foreground">{ex.name}</span>
-                    <span>
+                  <li
+                    key={ex.name}
+                    className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-background/40 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-semibold text-foreground">{ex.name}</span>
+                        {ex.imageUrl && <ExerciseImageButton imageUrl={ex.imageUrl} name={ex.name} />}
+                      </div>
+                      {ex.suggestedWeight && (
+                        <p className="mt-0.5 text-xs font-medium text-glow-cyan">{ex.suggestedWeight}</p>
+                      )}
+                    </div>
+                    <span className="shrink-0 rounded-full border border-border/60 bg-muted/50 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-foreground">
                       {ex.targetSets} ×{" "}
                       {ex.targetRepsMin === ex.targetRepsMax
                         ? ex.targetRepsMin

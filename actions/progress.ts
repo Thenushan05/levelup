@@ -12,6 +12,7 @@ export interface ExerciseLibraryItemDTO {
   slug: string;
   name: string;
   muscleGroup: string;
+  imageUrl: string | null;
 }
 
 export async function getExerciseLibrary(): Promise<ExerciseLibraryItemDTO[]> {
@@ -20,7 +21,12 @@ export async function getExerciseLibrary(): Promise<ExerciseLibraryItemDTO[]> {
   await ensureSeeded();
 
   const exercises = await Exercise.find({}).sort({ muscleGroup: 1, name: 1 }).lean();
-  return exercises.map((e) => ({ slug: e.slug, name: e.name, muscleGroup: e.muscleGroup }));
+  return exercises.map((e) => ({
+    slug: e.slug,
+    name: e.name,
+    muscleGroup: e.muscleGroup,
+    imageUrl: e.imageUrl ?? null,
+  }));
 }
 
 export interface ExerciseProgressDTO {

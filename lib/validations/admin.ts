@@ -8,6 +8,7 @@ const templateExerciseSchema = z.object({
   targetRepsMax: z.number().int().min(1).max(999),
   repsUnit: z.enum(["reps", "seconds"]),
   perSide: z.boolean(),
+  imageUrl: z.string().trim().max(300).optional(),
 });
 
 const templateDaySchema = z
