@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node _gen-favicon-ico.mjs)",
+      "Bash(rm -f _gen-favicon-ico.mjs)"
+    ]
+  }
+}
