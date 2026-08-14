@@ -8,6 +8,7 @@ import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { XpBar } from "@/components/system/hud-progress";
 import { RankBadge } from "@/components/system/badges";
+import { HunterAvatar } from "@/components/system/hunter-avatar";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/system/confirm-dialog";
 import {
@@ -336,9 +337,7 @@ export function PartyView({
           {memberList.map((m) => (
             <SystemPanel key={m.userId} noMotion className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/40 text-xs font-bold text-glow-cyan">
-                  {m.name.slice(0, 2).toUpperCase()}
-                </div>
+                <HunterAvatar seed={m.userId} image={m.image} />
                 <div>
                   <p className="heading-system flex items-center gap-1.5 text-sm">
                     {m.name}

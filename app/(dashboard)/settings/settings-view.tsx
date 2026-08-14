@@ -94,6 +94,9 @@ export function SettingsView({
               Avatar URL (optional)
             </Label>
             <Input id="image" name="image" defaultValue={image} placeholder="https://..." />
+            <p className="text-[11px] text-muted-foreground">
+              Leave blank to get a randomly assigned profile icon instead.
+            </p>
           </div>
           {profileError && <p className="text-sm text-destructive">{profileError}</p>}
           <Button type="submit" disabled={profilePending} className="heading-system tracking-widest">
