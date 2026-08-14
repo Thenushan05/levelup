@@ -10,7 +10,14 @@ import { XpBar } from "@/components/system/hud-progress";
 import { RankBadge } from "@/components/system/badges";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/system/confirm-dialog";
-import { reactToActivity, addActivityComment, nudgeMember, deleteParty, getPartyActivity } from "@/actions/party";
+import {
+  reactToActivity,
+  addActivityComment,
+  nudgeMember,
+  deleteParty,
+  getPartyActivity,
+  getPartyMembers,
+} from "@/actions/party";
 import { showErrorToast, showSystemToast } from "@/lib/toast-system";
 import { getRankTitle } from "@/lib/ranks";
 import { cn } from "@/lib/utils";
@@ -49,6 +56,7 @@ export function PartyView({
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("members");
+  const [memberList, setMemberList] = useState(members);
   const [items, setItems] = useState(activity);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [nudgedIds, setNudgedIds] = useState<Set<string>>(new Set());
@@ -75,6 +83,30 @@ export function PartyView({
     }
 
     refetch(); // catch up immediately on switching to the tab
+    document.addEventListener("visibilitychange", refetch);
+    window.addEventListener("focus", refetch);
+    return () => {
+      document.removeEventListener("visibilitychange", refetch);
+      window.removeEventListener("focus", refetch);
+    };
+  }, [party.id, activeTab]);
+
+  // Same reasoning as the Activity refetch above — a member joining/leaving, or their today
+  // status changing, only reaches an already-open party page this way. Scoped to the Members
+  // tab so switching to it (or refocusing while on it) is what catches you up.
+  useEffect(() => {
+    if (activeTab !== "members") return;
+
+    function refetch() {
+      if (document.hidden) return;
+      getPartyMembers(party.id)
+        .then(setMemberList)
+        .catch(() => {
+          // Transient network/auth hiccup — the next focus/tab-switch will just try again.
+        });
+    }
+
+    refetch();
     document.addEventListener("visibilitychange", refetch);
     window.addEventListener("focus", refetch);
     return () => {
@@ -227,7 +259,7 @@ export function PartyView({
         </TabsList>
 
         <TabsContent value="members" className="space-y-2.5 pt-4">
-          {members.map((m) => (
+          {memberList.map((m) => (
             <SystemPanel key={m.userId} noMotion className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/40 text-xs font-bold text-glow-cyan">

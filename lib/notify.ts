@@ -3,6 +3,15 @@ import { GymGroup } from "@/models/GymGroup";
 import { connectToDatabase } from "@/lib/mongodb";
 import type { NotificationType } from "@/types";
 
+/** Midnight at the end of "today" (local time, same convention as lib/dates.ts) — setHours(24, ...)
+ * rolls over to 00:00 the next day regardless of the current time. Used as the party activity
+ * feed's expiry: posted any time today, gone by tonight, not "24h from the exact moment". */
+function nextMidnight(): Date {
+  const d = new Date();
+  d.setHours(24, 0, 0, 0);
+  return d;
+}
+
 export async function notifyUser(
   userId: string,
   type: NotificationType,
@@ -33,6 +42,7 @@ export async function notifyUserAndParty(
   const groups = await GymGroup.find({ "members.userId": actor.id }).select("_id").lean();
   if (groups.length === 0) return;
 
+  const expiresAt = nextMidnight();
   await Notification.insertMany(
     groups.map((g) => ({
       userId: actor.id,
@@ -43,6 +53,7 @@ export async function notifyUserAndParty(
       meta,
       actorUserId: actor.id,
       actorName: actor.name,
+      expiresAt,
     }))
   );
 }
