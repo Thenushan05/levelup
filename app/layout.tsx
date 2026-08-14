@@ -23,6 +23,15 @@ export const metadata: Metadata = {
   title: "LevelUp — Level Up Your Training",
   description:
     "LevelUp turns your real-life gym routine into a leveling system. Track workouts, earn XP, level up, and rank up.",
+  // iOS has no web app manifest support for `display: standalone` — these
+  // meta tags are the separate, Apple-specific way to get the same effect
+  // (no Safari chrome, custom status bar, home-screen title) once added via
+  // Share -> Add to Home Screen.
+  appleWebApp: {
+    capable: true,
+    title: "LevelUp",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
