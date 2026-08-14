@@ -10,7 +10,8 @@ import { SetRow } from "@/components/quest/set-row";
 import { ExerciseNotesField } from "@/components/quest/exercise-notes-field";
 import { QuestCompleteModal, type QuestCompleteData } from "@/components/quest/quest-complete-modal";
 import { updateSet, type ExerciseDetailDTO } from "@/actions/workout";
-import { showAchievementToast, showErrorToast, showXpPendingToast } from "@/lib/toast-system";
+import { showAchievementToast, showErrorToast, showSystemToast, showXpPendingToast } from "@/lib/toast-system";
+import { enqueueAction, looksLikeNetworkFailure } from "@/lib/offline-queue";
 import { formatDisplayDate } from "@/lib/dates";
 import type { CatalogCalorieEstimate } from "@/lib/calories-burned";
 
@@ -29,21 +30,38 @@ export function ExerciseDetailClient({
     initialDetail.caloriesBurnedToday
   );
 
+  function applyOptimisticSet(setNumber: number, weight: number | null, reps: number | null, completed: boolean) {
+    setExercise((prev) => ({
+      ...prev,
+      sets: prev.sets.map((s) => (s.setNumber === setNumber ? { ...s, weight, reps, completed } : s)),
+    }));
+  }
+
   async function handleSaveSet(
     setNumber: number,
     weight: number | null,
     reps: number | null,
     completed: boolean
   ) {
+    const input = { dailyWorkoutId, exerciseEntryId: exercise.id, setNumber, weight, reps, completed };
+
+    // Offline (or bad enough gym signal that the request can't complete): log
+    // the set locally and queue it, rather than losing it or blocking on a
+    // request that may never resolve. XP/achievements/completion feedback
+    // only arrive once this actually syncs — see OfflineSyncManager.
+    async function queueOffline(reason: string) {
+      applyOptimisticSet(setNumber, weight, reps, completed);
+      await enqueueAction({ kind: "updateSet", payload: input, label: exercise.name });
+      showSystemToast("Set queued", reason);
+    }
+
+    if (!navigator.onLine) {
+      await queueOffline("You're offline — this will sync automatically once you're back online.");
+      return;
+    }
+
     try {
-      const result = await updateSet({
-        dailyWorkoutId,
-        exerciseEntryId: exercise.id,
-        setNumber,
-        weight,
-        reps,
-        completed,
-      });
+      const result = await updateSet(input);
       const updatedExercise = result.workout.exercises.find((e) => e.id === exercise.id);
       if (updatedExercise) setExercise(updatedExercise);
       setCaloriesBurnedToday(result.caloriesBurnedToday);
@@ -64,6 +82,10 @@ export function ExerciseDetailClient({
         });
       }
     } catch (err) {
+      if (looksLikeNetworkFailure(err)) {
+        await queueOffline("Connection issue — this will sync automatically once you're back online.");
+        return;
+      }
       showErrorToast(err instanceof Error ? err.message : "Unable to save your set.");
     }
   }

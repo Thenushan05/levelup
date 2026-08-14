@@ -7,7 +7,8 @@ import { SystemLabel } from "@/components/system/system-label";
 import { Button } from "@/components/ui/button";
 import { checkIn, type AttendanceStatusDTO } from "@/actions/attendance";
 import { formatTime } from "@/lib/dates";
-import { showAchievementToast, showErrorToast, showXpPendingToast } from "@/lib/toast-system";
+import { showAchievementToast, showErrorToast, showSystemToast, showXpPendingToast } from "@/lib/toast-system";
+import { enqueueAction, looksLikeNetworkFailure } from "@/lib/offline-queue";
 
 export function AttendanceCard({
   initial,
@@ -20,16 +21,35 @@ export function AttendanceCard({
   const [status, setStatus] = useState(initial);
   const [pending, startTransition] = useTransition();
 
+  async function queueOfflineCheckIn() {
+    await enqueueAction({ kind: "checkIn", payload: null, label: "Gym Check-In" });
+    setStatus({ checkedIn: true, checkedInAt: new Date().toISOString() });
+    showSystemToast("Check-in queued", "You're offline — this will sync automatically once you're back online.");
+  }
+
   function handleCheckIn() {
     startTransition(async () => {
-      const result = await checkIn();
-      if (!result.success) {
-        showErrorToast(result.error);
+      if (!navigator.onLine) {
+        await queueOfflineCheckIn();
         return;
       }
-      setStatus({ checkedIn: true, checkedInAt: result.data.checkedInAt });
-      showXpPendingToast(10, "Gym Check-In");
-      result.data.achievementsUnlocked.forEach(showAchievementToast);
+
+      try {
+        const result = await checkIn();
+        if (!result.success) {
+          showErrorToast(result.error);
+          return;
+        }
+        setStatus({ checkedIn: true, checkedInAt: result.data.checkedInAt });
+        showXpPendingToast(10, "Gym Check-In");
+        result.data.achievementsUnlocked.forEach(showAchievementToast);
+      } catch (err) {
+        if (looksLikeNetworkFailure(err)) {
+          await queueOfflineCheckIn();
+          return;
+        }
+        showErrorToast("Something went wrong checking in.");
+      }
     });
   }
 
