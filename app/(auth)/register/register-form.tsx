@@ -6,18 +6,31 @@ import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { registerSchema } from "@/lib/validations/auth";
-import { registerUser } from "@/actions/auth";
+import { registerUser, verifyRegistrationOtp, resendRegistrationOtp } from "@/actions/auth";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel } from "@/components/system/system-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
+interface PendingVerification {
+  name: string;
+  email: string;
+  password: string;
+}
+
 export function RegisterForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [initializedName, setInitializedName] = useState<string | null>(null);
+
+  const [pendingVerification, setPendingVerification] = useState<PendingVerification | null>(null);
+  const [otp, setOtp] = useState("");
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpPending, startOtpTransition] = useTransition();
+  const [resendPending, startResendTransition] = useTransition();
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,24 +54,64 @@ export function RegisterForm() {
         return;
       }
 
-      const signInRes = await signIn("credentials", {
+      setPendingVerification({
+        name: parsed.data.name,
         email: parsed.data.email,
         password: parsed.data.password,
-        redirect: false,
       });
-      if (signInRes?.error) {
-        setError("Account created, but automatic sign-in failed. Please log in.");
+    });
+  }
+
+  async function completeSignIn(name: string, email: string, password: string) {
+    const signInRes = await signIn("credentials", { email, password, redirect: false });
+    if (signInRes?.error) {
+      setOtpError("Verified, but automatic sign-in failed. Please log in.");
+      return;
+    }
+
+    setInitializedName(name);
+    setTimeout(() => router.push("/onboarding"), 1800);
+  }
+
+  function handleVerifyOtp(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!pendingVerification) return;
+    setOtpError(null);
+
+    if (otp.trim().length !== 6) {
+      setOtpError("Enter the 6-digit code");
+      return;
+    }
+
+    startOtpTransition(async () => {
+      const result = await verifyRegistrationOtp({ email: pendingVerification.email, code: otp.trim() });
+      if (!result.success) {
+        setOtpError(result.error);
         return;
       }
 
-      setInitializedName(parsed.data.name);
-      setTimeout(() => router.push("/onboarding"), 1800);
+      await completeSignIn(pendingVerification.name, pendingVerification.email, pendingVerification.password);
+    });
+  }
+
+  function handleResend() {
+    if (!pendingVerification) return;
+    setOtpError(null);
+    setResendMessage(null);
+
+    startResendTransition(async () => {
+      const result = await resendRegistrationOtp({ email: pendingVerification.email });
+      if (!result.success) {
+        setOtpError(result.error);
+        return;
+      }
+      setResendMessage("A new code is on its way to your inbox.");
     });
   }
 
   if (initializedName) {
     return (
-      <SystemPanel variant="success" className="py-10 text-center">
+      <SystemPanel key="success" variant="success" className="py-10 text-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -73,8 +126,58 @@ export function RegisterForm() {
     );
   }
 
+  if (pendingVerification) {
+    return (
+      <SystemPanel key="otp-step" className="space-y-5">
+        <div>
+          <SystemLabel accent>Verify Email</SystemLabel>
+          <h1 className="heading-system mt-1 text-2xl">Enter Your Code</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            We sent a 6-digit code to <span className="text-foreground">{pendingVerification.email}</span>. Enter it
+            below to activate your account.
+          </p>
+        </div>
+        <form onSubmit={handleVerifyOtp} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="otp" className="label-system">
+              Verification Code
+            </Label>
+            <Input
+              id="otp"
+              name="otp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              required
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              className="text-center text-xl tracking-[0.5em]"
+              placeholder="000000"
+            />
+          </div>
+          {otpError && <p className="text-sm text-destructive">{otpError}</p>}
+          {resendMessage && !otpError && <p className="text-sm text-glow-cyan">{resendMessage}</p>}
+          <Button type="submit" disabled={otpPending} className="w-full heading-system tracking-widest">
+            {otpPending ? "VERIFYING..." : "VERIFY & CONTINUE"}
+          </Button>
+        </form>
+        <p className="text-center text-sm text-muted-foreground">
+          Didn&apos;t get it?{" "}
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resendPending}
+            className="text-primary hover:underline disabled:opacity-50"
+          >
+            {resendPending ? "Sending..." : "Resend code"}
+          </button>
+        </p>
+      </SystemPanel>
+    );
+  }
+
   return (
-    <SystemPanel className="space-y-5">
+    <SystemPanel key="register-form" className="space-y-5">
       <div>
         <SystemLabel accent>New Player</SystemLabel>
         <h1 className="heading-system mt-1 text-2xl">Register</h1>
