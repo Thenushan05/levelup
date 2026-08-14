@@ -2,10 +2,12 @@
 
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/sonner";
+import { ServiceWorkerRegister } from "@/components/providers/service-worker-register";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
+      <ServiceWorkerRegister />
       {children}
       <Toaster
         position="top-right"
