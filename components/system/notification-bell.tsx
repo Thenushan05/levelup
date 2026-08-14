@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type MouseEvent } from "react";
+import { useState, useEffect, useTransition, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 import {
@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   getNotifications,
+  getUnreadNotificationCount,
   markNotificationsRead,
   clearNotifications,
   type NotificationDTO,
@@ -47,7 +48,9 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: n
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
-    if (next && !notifications) {
+    if (next) {
+      // Always fresh, not just the first open — otherwise a notification that arrived after
+      // the first time you opened this would never show up without a full page reload.
       startTransition(async () => {
         const data = await getNotifications();
         setNotifications(data);
@@ -60,6 +63,28 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: n
       setUnread(0);
     }
   }
+
+  // The unread badge is otherwise just a static number from the page's last full render —
+  // it'd never reflect a notification (like a party cheer) that arrived while you were already
+  // sitting on the page. No timer: only recheck on events that mean "you might have missed
+  // something" — tabbing back to this browser tab, or refocusing the window. Skipped while the
+  // dropdown is open so it doesn't fight with the mark-as-read flow above.
+  useEffect(() => {
+    function refreshUnreadCount() {
+      if (document.hidden || open) return;
+      getUnreadNotificationCount()
+        .then(setUnread)
+        .catch(() => {
+          // Transient hiccup — the next focus/tab-switch will just try again.
+        });
+    }
+    document.addEventListener("visibilitychange", refreshUnreadCount);
+    window.addEventListener("focus", refreshUnreadCount);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshUnreadCount);
+      window.removeEventListener("focus", refreshUnreadCount);
+    };
+  }, [open]);
 
   return (
     <DropdownMenu open={open} onOpenChange={handleOpenChange}>
