@@ -8,7 +8,7 @@ import { HudProgress } from "@/components/system/hud-progress";
 import { EmptyState } from "@/components/system/empty-state";
 import { BodyStatsForm } from "@/components/diet/body-stats-form";
 import { BmiCategoryTable } from "@/components/diet/bmi-category-table";
-import { formatDisplayDate } from "@/lib/dates";
+import { formatDisplayDate, formatDuration } from "@/lib/dates";
 import { BMI_CATEGORY_TONE, kgToLbs } from "@/lib/nutrition";
 import { cn } from "@/lib/utils";
 
@@ -128,6 +128,28 @@ export default async function DietPage() {
 
           <SystemPanel className="space-y-3">
             <SystemLabel accent>Calorie Burn</SystemLabel>
+
+            {profile.totalBurn && (
+              <div className="grid grid-cols-3 gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-center">
+                <div>
+                  <p className="text-[11px] text-muted-foreground">All-Time Burn</p>
+                  <p className="heading-system text-lg text-glow-cyan">
+                    {profile.totalBurn.totalKcal.toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">kcal</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Workouts</p>
+                  <p className="heading-system text-lg">{profile.totalBurn.totalWorkouts}</p>
+                  <p className="text-[10px] text-muted-foreground">completed</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Time Trained</p>
+                  <p className="heading-system text-lg">{formatDuration(profile.totalBurn.totalMinutes)}</p>
+                  <p className="text-[10px] text-muted-foreground">total</p>
+                </div>
+              </div>
+            )}
 
             {profile.todayEstimate && (
               <div className="rounded-lg border border-border p-3">

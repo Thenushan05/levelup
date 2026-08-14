@@ -8,6 +8,7 @@ import { LogOut, Shield, ClipboardCheck, Menu, UserCog, Users } from "lucide-rea
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/nav";
 import { RankBadge } from "@/components/system/badges";
+import { HunterAvatar } from "@/components/system/hunter-avatar";
 import { NotificationBell } from "@/components/system/notification-bell";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { Rank } from "@/types";
@@ -106,7 +107,9 @@ function AdminNavLinks({
 
 export function DashboardShell({
   children,
+  userId,
   playerName,
+  image,
   level,
   rank,
   unreadCount,
@@ -114,7 +117,9 @@ export function DashboardShell({
   pendingApprovalCount,
 }: {
   children: ReactNode;
+  userId: string;
   playerName: string;
+  image: string | null;
   level: number;
   rank: string;
   unreadCount: number;
@@ -196,6 +201,9 @@ export function DashboardShell({
               <p className="heading-system text-sm text-foreground">{playerName.toUpperCase()}</p>
             </div>
             <div className="flex items-center gap-3">
+              <Link href="/player">
+                <HunterAvatar seed={userId} image={image} size="sm" />
+              </Link>
               <div className="flex items-center gap-2">
                 <RankBadge rank={rank as Rank} size="sm" />
                 <span className="label-system-accent hidden sm:inline">LV.{level}</span>

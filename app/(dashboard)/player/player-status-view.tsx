@@ -1,4 +1,5 @@
 import { RankBadge } from "@/components/system/badges";
+import { HunterAvatar } from "@/components/system/hunter-avatar";
 import { getRankTitle } from "@/lib/ranks";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
@@ -14,6 +15,7 @@ export function PlayerStatusView({ status }: { status: PlayerStatusDTO }) {
     <div className="mx-auto max-w-2xl space-y-6">
       <SystemPanel className="flex flex-col items-center gap-3 py-8 text-center">
         <SystemLabel accent>Player</SystemLabel>
+        <HunterAvatar seed={player.id} image={player.image} size="lg" />
         <SystemHeading className="text-2xl">{player.name}</SystemHeading>
         <RankBadge rank={player.rank} size="lg" />
         <p className="heading-system text-3xl text-glow-cyan">LEVEL {player.level}</p>

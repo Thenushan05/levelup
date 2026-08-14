@@ -1,10 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { Flame } from "lucide-react";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel } from "@/components/system/system-label";
 import { cn } from "@/lib/utils";
 import type { CatalogCalorieEstimate } from "@/lib/calories-burned";
+import type { TotalCalorieBurnDTO } from "@/actions/workout";
 import type { DailyWorkoutDTO } from "@/types";
 
 const R = 80;
@@ -52,10 +54,12 @@ export function HealthLevelGauge({
   quest,
   burned,
   target,
+  totalBurn,
 }: {
   quest: DailyWorkoutDTO | null;
   burned: CatalogCalorieEstimate | null;
   target: CatalogCalorieEstimate | null;
+  totalBurn?: TotalCalorieBurnDTO;
 }) {
   const statusLine = (() => {
     if (!quest) return "No active routine — activate one to start tracking.";
@@ -114,6 +118,16 @@ export function HealthLevelGauge({
         <p className={cn("heading-system text-sm", tier.tone)}>{tier.label}</p>
         <p className="text-xs italic text-muted-foreground">&ldquo;{tier.quote}&rdquo;</p>
       </div>
+
+      {totalBurn && (
+        <div className="flex items-center justify-center gap-2.5 border-t border-border/60 pt-3">
+          <Flame className="h-6 w-6 shrink-0 text-glow-cyan" />
+          <div className="text-left">
+            <p className="heading-system text-xl text-glow-cyan">{totalBurn.totalKcal.toLocaleString()} KCAL</p>
+            <p className="text-[11px] text-muted-foreground">All-Time · {totalBurn.totalWorkouts} workouts</p>
+          </div>
+        </div>
+      )}
     </SystemPanel>
   );
 }

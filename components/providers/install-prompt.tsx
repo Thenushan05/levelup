@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Download, Share, X } from "lucide-react";
 import { SystemPanel } from "@/components/system/system-panel";
 import { Button } from "@/components/ui/button";
+import { getInstallPromptDismissed, dismissInstallPromptForever } from "@/actions/preferences";
 
 /** Not in lib.dom.d.ts — Chrome/Android-only event fired when the browser
  * decides the page meets install criteria (manifest + service worker etc.). */
@@ -16,6 +17,9 @@ type Mode = "android" | "ios" | null;
 
 const DISMISSED_KEY = "levelup-install-dismissed-at";
 const DISMISS_COOLDOWN_MS = 1000 * 60 * 60 * 24 * 7; // re-offer a week after "Not now"
+/** Local fallback for "Don't ask again" clicked while signed out — there's
+ * no account yet to attach the preference to. */
+const FOREVER_KEY = "levelup-install-dismissed-forever";
 
 function isStandalone(): boolean {
   const nav = window.navigator as Navigator & { standalone?: boolean };
@@ -41,34 +45,56 @@ function isIOS(): boolean {
  * the system share sheet): there's no equivalent event at all — Apple never
  * exposes one — so instead we detect iOS directly and show manual
  * instructions for the Share -> Add to Home Screen flow.
+ *
+ * "Don't ask again" is stored on the account (installPromptDismissed on
+ * User), not just this browser, so it follows the player to every device
+ * they log into — falling back to a local flag only for a signed-out
+ * visitor, who has no account yet to attach it to.
  */
 export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [mode, setMode] = useState<Mode>(null);
 
   useEffect(() => {
-    if (isStandalone()) return;
+    let cancelled = false;
+    let handler: ((e: Event) => void) | null = null;
 
-    const dismissedAt = Number(localStorage.getItem(DISMISSED_KEY) ?? 0);
-    if (dismissedAt && Date.now() - dismissedAt < DISMISS_COOLDOWN_MS) return;
+    async function init() {
+      try {
+        if (isStandalone()) return;
+        if (localStorage.getItem(FOREVER_KEY)) return;
 
-    if (isIOS()) {
-      // Deferred rather than called synchronously in the effect body — there's
-      // no async "event" to hook for iOS the way beforeinstallprompt gives us
-      // below, so a microtask is the idiomatic way to still avoid a
-      // synchronous setState-in-effect.
-      const id = setTimeout(() => setMode("ios"), 0);
-      return () => clearTimeout(id);
+        const dismissedAt = Number(localStorage.getItem(DISMISSED_KEY) ?? 0);
+        if (dismissedAt && Date.now() - dismissedAt < DISMISS_COOLDOWN_MS) return;
+
+        // Checked after the cheap local checks above, not before, so a
+        // signed-out visitor never waits on a network round trip for nothing.
+        const accountDismissed = await getInstallPromptDismissed();
+        if (cancelled || accountDismissed) return;
+
+        if (isIOS()) {
+          setMode("ios");
+          return;
+        }
+
+        handler = (e: Event) => {
+          e.preventDefault();
+          setDeferredPrompt(e as BeforeInstallPromptEvent);
+          setMode("android");
+        };
+        window.addEventListener("beforeinstallprompt", handler);
+      } catch {
+        // Fail closed — if dismissal state can't be determined, don't risk
+        // nagging someone who already opted out.
+      }
     }
 
-    function handleBeforeInstallPrompt(e: Event) {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setMode("android");
-    }
+    init();
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => {
+      cancelled = true;
+      if (handler) window.removeEventListener("beforeinstallprompt", handler);
+    };
   }, []);
 
   async function handleInstall() {
@@ -86,37 +112,56 @@ export function InstallPrompt() {
     setMode(null);
   }
 
+  async function handleNeverAskAgain() {
+    try {
+      const result = await dismissInstallPromptForever();
+      if (!result.success) localStorage.setItem(FOREVER_KEY, "1");
+    } catch {
+      localStorage.setItem(FOREVER_KEY, "1");
+    }
+    setMode(null);
+  }
+
   if (!mode) return null;
 
   return (
     <div className="fixed inset-x-4 bottom-4 z-50 sm:inset-x-auto sm:right-4 sm:w-80">
-      <SystemPanel className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-glow-cyan">
-          {mode === "ios" ? <Share className="h-5 w-5" /> : <Download className="h-5 w-5" />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="heading-system text-sm">Install LevelUp</p>
-          <p className="text-xs text-muted-foreground">
-            {mode === "ios" ? (
-              <>
-                Tap <span className="text-foreground">Share</span>, then{" "}
-                <span className="text-foreground">Add to Home Screen</span>.
-              </>
-            ) : (
-              "Add it to your home screen for quick, app-like access."
+      <SystemPanel className="space-y-2.5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-glow-cyan">
+            {mode === "ios" ? <Share className="h-5 w-5" /> : <Download className="h-5 w-5" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="heading-system text-sm">Install LevelUp</p>
+            <p className="text-xs text-muted-foreground">
+              {mode === "ios" ? (
+                <>
+                  Tap <span className="text-foreground">Share</span>, then{" "}
+                  <span className="text-foreground">Add to Home Screen</span>.
+                </>
+              ) : (
+                "Add it to your home screen for quick, app-like access."
+              )}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {mode === "android" && (
+              <Button size="sm" onClick={handleInstall} className="heading-system">
+                Install
+              </Button>
             )}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          {mode === "android" && (
-            <Button size="sm" onClick={handleInstall} className="heading-system">
-              Install
+            <Button size="icon-sm" variant="ghost" onClick={handleDismiss} aria-label="Dismiss">
+              <X className="h-4 w-4" />
             </Button>
-          )}
-          <Button size="icon-sm" variant="ghost" onClick={handleDismiss} aria-label="Dismiss">
-            <X className="h-4 w-4" />
-          </Button>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={handleNeverAskAgain}
+          className="w-full text-center text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          Don&apos;t ask again
+        </button>
       </SystemPanel>
     </div>
   );

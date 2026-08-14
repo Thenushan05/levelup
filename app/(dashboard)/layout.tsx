@@ -13,7 +13,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   await connectToDatabase();
   const user = await User.findById(session.user.id)
-    .select("name level rank onboardingCompleted isAdmin")
+    .select("name level rank onboardingCompleted isAdmin image")
     .lean();
   if (!user) redirect("/login");
   if (!user.onboardingCompleted) redirect("/onboarding");
@@ -26,7 +26,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   return (
     <DashboardShell
+      userId={session.user.id}
       playerName={user.name}
+      image={user.image ?? null}
       level={user.level}
       rank={user.rank}
       unreadCount={unreadCount}
