@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, LogOut } from "lucide-react";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel } from "@/components/system/system-label";
 import { HudProgress } from "@/components/system/hud-progress";
@@ -133,16 +133,21 @@ export function OnboardingWizard({
 
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-12">
-      <div className="mb-6 text-center">
-        <span className="font-heading text-2xl font-bold tracking-[0.3em] text-glow-cyan">LevelUp</span>
-        <p className="label-system mt-1">Player Onboarding</p>
-        <button
+      <div className="mb-6 space-y-4">
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="mt-2 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          className="heading-system tracking-wide"
         >
-          ← Sign out and back to login
-        </button>
+          <LogOut className="h-3.5 w-3.5" />
+          Sign Out
+        </Button>
+        <div className="text-center">
+          <span className="font-heading text-2xl font-bold tracking-[0.3em] text-glow-cyan">LevelUp</span>
+          <p className="label-system mt-1">Player Onboarding</p>
+        </div>
       </div>
 
       <SystemPanel className="space-y-6">
