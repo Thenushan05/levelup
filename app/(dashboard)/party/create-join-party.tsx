@@ -20,12 +20,12 @@ export function CreateJoinParty() {
     setError(null);
     const name = String(new FormData(e.currentTarget).get("name") ?? "");
     startTransition(async () => {
-      try {
-        await createGroup({ name });
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to create party.");
+      const result = await createGroup({ name });
+      if (!result.success) {
+        setError(result.error);
+        return;
       }
+      router.refresh();
     });
   }
 
@@ -34,12 +34,12 @@ export function CreateJoinParty() {
     setError(null);
     const inviteCode = String(new FormData(e.currentTarget).get("inviteCode") ?? "");
     startTransition(async () => {
-      try {
-        await joinGroup({ inviteCode });
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to join party.");
+      const result = await joinGroup({ inviteCode });
+      if (!result.success) {
+        setError(result.error);
+        return;
       }
+      router.refresh();
     });
   }
 

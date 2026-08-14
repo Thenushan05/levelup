@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Crown, Megaphone, Check, Trash2, RefreshCw } from "lucide-react";
+import { Copy, Crown, Megaphone, Trash2, RefreshCw } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
@@ -59,7 +59,7 @@ export function PartyView({
   const [memberList, setMemberList] = useState(members);
   const [items, setItems] = useState(activity);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
-  const [nudgedIds, setNudgedIds] = useState<Set<string>>(new Set());
+  const [pendingNudgeIds, setPendingNudgeIds] = useState<Set<string>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [refreshingMembers, setRefreshingMembers] = useState(false);
   const [refreshingActivity, setRefreshingActivity] = useState(false);
@@ -190,10 +190,9 @@ export function PartyView({
       })
     );
     startTransition(async () => {
-      try {
-        await reactToActivity({ notificationId, emoji });
-      } catch (err) {
-        showErrorToast(err instanceof Error ? err.message : "Unable to react.");
+      const result = await reactToActivity({ notificationId, emoji });
+      if (!result.success) {
+        showErrorToast(result.error);
       }
     });
   }
@@ -216,35 +215,42 @@ export function PartyView({
     );
 
     startTransition(async () => {
-      try {
-        const created = await addActivityComment({ notificationId, text });
+      const result = await addActivityComment({ notificationId, text });
+      if (result.success) {
         setItems((prev) =>
           prev.map((a) =>
-            a.id !== notificationId ? a : { ...a, comments: a.comments.map((c) => (c.id === optimisticId ? created : c)) }
+            a.id !== notificationId
+              ? a
+              : { ...a, comments: a.comments.map((c) => (c.id === optimisticId ? result.data : c)) }
           )
         );
-      } catch (err) {
+      } else {
         setItems((prev) =>
           prev.map((a) => (a.id !== notificationId ? a : { ...a, comments: a.comments.filter((c) => c.id !== optimisticId) }))
         );
-        showErrorToast(err instanceof Error ? err.message : "Unable to post comment.");
+        showErrorToast(result.error);
       }
     });
   }
 
+  // Up to MAX_CHEERS_PER_DAY (server-enforced) per member per day — this only tracks a
+  // request actually in flight, so the button disables for a moment per click and then goes
+  // right back to CHEER, instead of permanently flipping to a used-up state after the first one.
   function handleNudge(memberUserId: string) {
-    setNudgedIds((prev) => new Set(prev).add(memberUserId));
+    setPendingNudgeIds((prev) => new Set(prev).add(memberUserId));
     startTransition(async () => {
-      try {
-        await nudgeMember({ memberUserId });
-        showSystemToast("Cheer sent 🔥");
-      } catch (err) {
-        setNudgedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(memberUserId);
-          return next;
-        });
-        showErrorToast(err instanceof Error ? err.message : "Unable to send cheer.");
+      const result = await nudgeMember({ memberUserId });
+      setPendingNudgeIds((prev) => {
+        const next = new Set(prev);
+        next.delete(memberUserId);
+        return next;
+      });
+      if (result.success) {
+        showSystemToast(
+          result.data.remaining > 0 ? `Cheer sent 🔥 · ${result.data.remaining} left today` : "Cheer sent 🔥 · none left today"
+        );
+      } else {
+        showErrorToast(result.error);
       }
     });
   }
@@ -259,12 +265,12 @@ export function PartyView({
   function handleDeleteParty() {
     setDeleteConfirmOpen(false);
     startTransition(async () => {
-      try {
-        await deleteParty(party.id);
+      const result = await deleteParty(party.id);
+      if (result.success) {
         showSystemToast("Party deleted");
         router.refresh();
-      } catch (err) {
-        showErrorToast(err instanceof Error ? err.message : "Unable to delete party.");
+      } else {
+        showErrorToast(result.error);
       }
     });
   }
@@ -358,19 +364,11 @@ export function PartyView({
                   <Button
                     size="xs"
                     variant="outline"
-                    disabled={nudgedIds.has(m.userId)}
+                    disabled={pendingNudgeIds.has(m.userId)}
                     onClick={() => handleNudge(m.userId)}
-                    title="Send a cheer to nudge them toward today's quest"
+                    title="Send a cheer to nudge them toward today's quest — up to 5 per day"
                   >
-                    {nudgedIds.has(m.userId) ? (
-                      <>
-                        <Check className="h-3 w-3" /> CHEERED
-                      </>
-                    ) : (
-                      <>
-                        <Megaphone className="h-3 w-3" /> CHEER
-                      </>
-                    )}
+                    <Megaphone className="h-3 w-3" /> CHEER
                   </Button>
                 )}
               </div>

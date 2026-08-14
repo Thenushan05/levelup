@@ -41,16 +41,23 @@ export interface CheckInResult {
   achievementsUnlocked: AchievementUnlockedDTO[];
 }
 
+export type CheckInActionResult = { success: true; data: CheckInResult } | { success: false; error: string };
+
 /**
  * Only one check-in per calendar day — enforced by the unique {userId, date}
  * index. XP is queued for admin approval, not granted immediately (see
  * lib/xp.ts's queueXpAward) — the check-in itself still records instantly.
+ *
+ * Returns {success, error} instead of throwing: Next.js redacts a thrown Error's message down
+ * to a generic digest-only error in production builds, which would turn "It's a rest day" or
+ * "You've already checked in today" into an unreadable error for every real user hitting these
+ * perfectly expected conditions, not just an actual bug.
  */
-export async function checkIn(): Promise<CheckInResult> {
+export async function checkIn(): Promise<CheckInActionResult> {
   const user = await requireUserDoc();
 
   if (await isTodayRestDay(user)) {
-    throw new Error("It's a rest day — no check-in needed. Recover and come back tomorrow.");
+    return { success: false, error: "It's a rest day — no check-in needed. Recover and come back tomorrow." };
   }
 
   const date = todayKey();
@@ -59,7 +66,7 @@ export async function checkIn(): Promise<CheckInResult> {
   try {
     await Attendance.create({ userId: user._id, date, checkedInAt, xpAwarded: XP_VALUES.GYM_CHECK_IN });
   } catch {
-    throw new Error("You've already checked in today.");
+    return { success: false, error: "You've already checked in today." };
   }
 
   user.lastCheckInDate = date;
@@ -80,8 +87,11 @@ export async function checkIn(): Promise<CheckInResult> {
   revalidatePath("/dashboard");
 
   return {
-    checkedInAt: checkedInAt.toISOString(),
-    xpPending: XP_VALUES.GYM_CHECK_IN + achievementsUnlocked.reduce((s, a) => s + a.xpReward, 0),
-    achievementsUnlocked,
+    success: true,
+    data: {
+      checkedInAt: checkedInAt.toISOString(),
+      xpPending: XP_VALUES.GYM_CHECK_IN + achievementsUnlocked.reduce((s, a) => s + a.xpReward, 0),
+      achievementsUnlocked,
+    },
   };
 }

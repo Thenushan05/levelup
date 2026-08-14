@@ -51,8 +51,14 @@ export async function getMyParty(): Promise<PartySummaryDTO | null> {
   };
 }
 
-export async function createGroup(input: CreateGroupInput): Promise<PartySummaryDTO> {
-  const parsed = createGroupSchema.parse(input);
+export type PartyActionResult<T> = { success: true; data: T } | { success: false; error: string };
+
+export async function createGroup(input: CreateGroupInput): Promise<PartyActionResult<PartySummaryDTO>> {
+  const parsed = createGroupSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
   const user = await requireUserDoc();
 
   let group = null;
@@ -60,7 +66,7 @@ export async function createGroup(input: CreateGroupInput): Promise<PartySummary
     const inviteCode = nanoid();
     try {
       group = await GymGroup.create({
-        name: parsed.name,
+        name: parsed.data.name,
         inviteCode,
         ownerId: user._id,
         members: [{ userId: user._id, joinedAt: new Date() }],
@@ -69,24 +75,31 @@ export async function createGroup(input: CreateGroupInput): Promise<PartySummary
       // invite code collision — retry with a new code
     }
   }
-  if (!group) throw new Error("Could not create party. Please try again.");
+  if (!group) return { success: false, error: "Could not create party. Please try again." };
 
   revalidatePath("/party");
   return {
-    id: group._id.toString(),
-    name: group.name,
-    inviteCode: group.inviteCode,
-    isOwner: true,
-    memberCount: 1,
+    success: true,
+    data: {
+      id: group._id.toString(),
+      name: group.name,
+      inviteCode: group.inviteCode,
+      isOwner: true,
+      memberCount: 1,
+    },
   };
 }
 
-export async function joinGroup(input: JoinGroupInput): Promise<PartySummaryDTO> {
-  const parsed = joinGroupSchema.parse(input);
+export async function joinGroup(input: JoinGroupInput): Promise<PartyActionResult<PartySummaryDTO>> {
+  const parsed = joinGroupSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
   const user = await requireUserDoc();
 
-  const group = await GymGroup.findOne({ inviteCode: parsed.inviteCode });
-  if (!group) throw new Error("SYSTEM ERROR: Invalid invite code.");
+  const group = await GymGroup.findOne({ inviteCode: parsed.data.inviteCode });
+  if (!group) return { success: false, error: "Invalid invite code." };
 
   const alreadyMember = group.members.some((m) => m.userId.toString() === user._id.toString());
   if (!alreadyMember) {
@@ -96,30 +109,38 @@ export async function joinGroup(input: JoinGroupInput): Promise<PartySummaryDTO>
 
   revalidatePath("/party");
   return {
-    id: group._id.toString(),
-    name: group.name,
-    inviteCode: group.inviteCode,
-    isOwner: group.ownerId.toString() === user._id.toString(),
-    memberCount: group.members.length,
+    success: true,
+    data: {
+      id: group._id.toString(),
+      name: group.name,
+      inviteCode: group.inviteCode,
+      isOwner: group.ownerId.toString() === user._id.toString(),
+      memberCount: group.members.length,
+    },
   };
 }
 
 /** Only the party's creator can delete it — checked against ownerId, not just membership.
  * Also cleans up the party's activity feed (Notification docs scoped to this groupId) so
- * nothing lingers pointing at a deleted party. */
-export async function deleteParty(groupId: string): Promise<void> {
+ * nothing lingers pointing at a deleted party.
+ *
+ * Returns {success, error} instead of throwing: a thrown Error's message is redacted by Next.js
+ * in production builds (see nudgeMember's comment for the full explanation), which would turn
+ * "only the creator can delete this" into an opaque digest-only error for the client. */
+export async function deleteParty(groupId: string): Promise<PartyActionResult<null>> {
   const userId = await requireUserId();
 
   const group = await GymGroup.findById(groupId).lean();
-  if (!group) throw new Error("Party not found.");
+  if (!group) return { success: false, error: "Party not found." };
   if (group.ownerId.toString() !== userId) {
-    throw new UnauthorizedError("SYSTEM ERROR: Only the party's creator can delete it.");
+    return { success: false, error: "Only the party's creator can delete it." };
   }
 
   await GymGroup.findByIdAndDelete(groupId);
   await Notification.deleteMany({ groupId });
 
   revalidatePath("/party");
+  return { success: true, data: null };
 }
 
 async function assertMembership(groupId: string, userId: string) {
@@ -247,37 +268,51 @@ export async function getPartyMembers(groupId: string): Promise<PartyMemberDTO[]
     .sort((a, b) => b.level - a.level);
 }
 
+/** Cheers per (actor, target) pair allowed per calendar day — enough to actually nudge someone
+ * a few times over a day without it turning into spam. */
+const MAX_CHEERS_PER_DAY = 5;
+
 /**
  * A lightweight, rate-limited "cheer" — sends the target a personal notification, nothing
  * more. Client-side this is only offered next to members whose todayStatus is "not_started"
  * (see party-view.tsx), but the real guard here is just: shared party, not yourself, and at
- * most once per day per target — nudging someone who's already started is harmless, not worth
- * blocking on a second server round trip to re-check their workout status.
+ * most MAX_CHEERS_PER_DAY per target per day — nudging someone who's already started is
+ * harmless, not worth blocking on a second server round trip to re-check their workout status.
+ *
+ * Returns {success, error} instead of throwing. This matters here specifically: Next.js
+ * redacts a thrown Error's message in production builds down to a generic "Minified React
+ * error #441 ... Server Components render" digest — so "You've already cheered them on today"
+ * would silently become unreadable for every real user hitting an expected condition, not just
+ * a genuine bug. Returning it as data instead means the exact message always reaches the client.
  */
-export async function nudgeMember(input: NudgeInput): Promise<void> {
-  const parsed = nudgeSchema.parse(input);
+export async function nudgeMember(input: NudgeInput): Promise<PartyActionResult<{ remaining: number }>> {
+  const parsed = nudgeSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
   const actor = await requireUserDoc();
-  const targetId = parsed.memberUserId;
+  const targetId = parsed.data.memberUserId;
 
   if (targetId === actor._id.toString()) {
-    throw new Error("You can't cheer yourself on.");
+    return { success: false, error: "You can't cheer yourself on." };
   }
 
   const sharedGroup = await GymGroup.findOne({
     $and: [{ "members.userId": actor._id }, { "members.userId": new Types.ObjectId(targetId) }],
   }).lean();
-  if (!sharedGroup) throw new UnauthorizedError("SYSTEM ERROR: You are not in a party with this member.");
+  if (!sharedGroup) return { success: false, error: "You are not in a party with this member." };
 
   const today = todayKey();
-  const alreadyNudgedToday = await Notification.findOne({
+  const nudgesToday = await Notification.countDocuments({
     userId: targetId,
     groupId: null,
     type: "nudge",
     "meta.nudgedBy": actor._id.toString(),
     "meta.date": today,
-  }).lean();
-  if (alreadyNudgedToday) {
-    throw new Error("You've already cheered them on today.");
+  });
+  if (nudgesToday >= MAX_CHEERS_PER_DAY) {
+    return { success: false, error: `You've already cheered them on ${MAX_CHEERS_PER_DAY} times today — that's the daily limit.` };
   }
 
   await notifyUser(targetId, "nudge", "Cheer Received", `${actor.name} is cheering you on 🔥`, {
@@ -291,6 +326,8 @@ export async function nudgeMember(input: NudgeInput): Promise<void> {
   if (target?.email) {
     await sendEmail({ to: target.email, ...cheerEmail(actor.name) });
   }
+
+  return { success: true, data: { remaining: MAX_CHEERS_PER_DAY - nudgesToday - 1 } };
 }
 
 export interface ActivityReactionDTO {
@@ -347,45 +384,66 @@ export async function getPartyActivity(groupId: string, limit = 30): Promise<Par
   });
 }
 
-export async function addActivityComment(input: ActivityCommentInput): Promise<ActivityCommentDTO> {
-  const parsed = activityCommentSchema.parse(input);
-  const user = await requireUserDoc();
+export async function addActivityComment(input: ActivityCommentInput): Promise<PartyActionResult<ActivityCommentDTO>> {
+  const parsed = activityCommentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
 
-  const notif = await Notification.findById(parsed.notificationId);
-  if (!notif || !notif.groupId) throw new Error("Activity not found.");
-  await assertMembership(notif.groupId.toString(), user._id.toString());
+  try {
+    const user = await requireUserDoc();
 
-  notif.comments.push({ userId: user._id, userName: user.name, text: parsed.text });
-  await notif.save();
-  revalidatePath("/party");
+    const notif = await Notification.findById(parsed.data.notificationId);
+    if (!notif || !notif.groupId) return { success: false, error: "Activity not found." };
+    await assertMembership(notif.groupId.toString(), user._id.toString());
 
-  const created = notif.comments[notif.comments.length - 1];
-  return {
-    id: created._id.toString(),
-    userName: created.userName,
-    text: created.text,
-    createdAt: created.createdAt.toISOString(),
-  };
+    notif.comments.push({ userId: user._id, userName: user.name, text: parsed.data.text });
+    await notif.save();
+    revalidatePath("/party");
+
+    const created = notif.comments[notif.comments.length - 1];
+    return {
+      success: true,
+      data: {
+        id: created._id.toString(),
+        userName: created.userName,
+        text: created.text,
+        createdAt: created.createdAt.toISOString(),
+      },
+    };
+  } catch (err) {
+    // Covers assertMembership's throw (e.g. removed from the party mid-session) — converted
+    // here rather than left to throw, since a thrown Error's message gets redacted to a generic
+    // digest by Next.js in production (see nudgeMember's comment for the full explanation).
+    return { success: false, error: err instanceof Error ? err.message : "Unable to post comment." };
+  }
 }
 
-export async function reactToActivity(input: ReactionInput): Promise<void> {
-  const parsed = reactionSchema.parse(input);
-  const userId = await requireUserId();
-
-  const notif = await Notification.findById(parsed.notificationId);
-  if (!notif || !notif.groupId) throw new Error("Activity not found.");
-  await assertMembership(notif.groupId.toString(), userId);
-
-  const idx = notif.reactions.findIndex(
-    (r) => r.userId.toString() === userId && r.emoji === parsed.emoji
-  );
-  if (idx >= 0) {
-    notif.reactions.splice(idx, 1);
-  } else {
-    notif.reactions.push({ emoji: parsed.emoji, userId: new Types.ObjectId(userId) });
+export async function reactToActivity(input: ReactionInput): Promise<PartyActionResult<null>> {
+  const parsed = reactionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
-  await notif.save();
-  revalidatePath("/party");
+
+  try {
+    const userId = await requireUserId();
+
+    const notif = await Notification.findById(parsed.data.notificationId);
+    if (!notif || !notif.groupId) return { success: false, error: "Activity not found." };
+    await assertMembership(notif.groupId.toString(), userId);
+
+    const idx = notif.reactions.findIndex((r) => r.userId.toString() === userId && r.emoji === parsed.data.emoji);
+    if (idx >= 0) {
+      notif.reactions.splice(idx, 1);
+    } else {
+      notif.reactions.push({ emoji: parsed.data.emoji, userId: new Types.ObjectId(userId) });
+    }
+    await notif.save();
+    revalidatePath("/party");
+    return { success: true, data: null };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Unable to react." };
+  }
 }
 
 export interface LeaderboardRowDTO {

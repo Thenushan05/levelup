@@ -22,14 +22,14 @@ export function AttendanceCard({
 
   function handleCheckIn() {
     startTransition(async () => {
-      try {
-        const result = await checkIn();
-        setStatus({ checkedIn: true, checkedInAt: result.checkedInAt });
-        showXpPendingToast(10, "Gym Check-In");
-        result.achievementsUnlocked.forEach(showAchievementToast);
-      } catch (err) {
-        showErrorToast(err instanceof Error ? err.message : "Unable to check in.");
+      const result = await checkIn();
+      if (!result.success) {
+        showErrorToast(result.error);
+        return;
       }
+      setStatus({ checkedIn: true, checkedInAt: result.data.checkedInAt });
+      showXpPendingToast(10, "Gym Check-In");
+      result.data.achievementsUnlocked.forEach(showAchievementToast);
     });
   }
 
