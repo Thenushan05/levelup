@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Copy, Crown, Megaphone, Check, Trash2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -10,7 +10,7 @@ import { XpBar } from "@/components/system/hud-progress";
 import { RankBadge } from "@/components/system/badges";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/system/confirm-dialog";
-import { reactToActivity, addActivityComment, nudgeMember, deleteParty } from "@/actions/party";
+import { reactToActivity, addActivityComment, nudgeMember, deleteParty, getPartyActivity } from "@/actions/party";
 import { showErrorToast, showSystemToast } from "@/lib/toast-system";
 import { getRankTitle } from "@/lib/ranks";
 import { cn } from "@/lib/utils";
@@ -48,12 +48,40 @@ export function PartyView({
   levelLeaderboard: LevelLeaderboardRowDTO[];
 }) {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState("members");
   const [items, setItems] = useState(activity);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [nudgedIds, setNudgedIds] = useState<Set<string>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [, startTransition] = useTransition();
   const nextOptimisticId = useRef(0);
+
+  // No websocket/push infra exists yet, so another member's reaction or reply only reaches
+  // this page via a fresh fetch. No timer at all, by design — this only refetches on events
+  // that mean "you might actually see something new": switching to the Activity tab, tabbing
+  // back to this browser tab, or refocusing the browser window. Zero background server calls
+  // while you're just sitting on the tab; the tradeoff is it won't update live without one of
+  // those — reopening the tab/window is what triggers the catch-up fetch.
+  useEffect(() => {
+    if (activeTab !== "activity") return;
+
+    function refetch() {
+      if (document.hidden) return;
+      getPartyActivity(party.id)
+        .then(setItems)
+        .catch(() => {
+          // Transient network/auth hiccup — the next focus/tab-switch will just try again.
+        });
+    }
+
+    refetch(); // catch up immediately on switching to the tab
+    document.addEventListener("visibilitychange", refetch);
+    window.addEventListener("focus", refetch);
+    return () => {
+      document.removeEventListener("visibilitychange", refetch);
+      window.removeEventListener("focus", refetch);
+    };
+  }, [party.id, activeTab]);
 
   function handleReact(notificationId: string, emoji: (typeof REACTIONS)[number]) {
     setItems((prev) =>
@@ -190,7 +218,7 @@ export function PartyView({
         onCancel={() => setDeleteConfirmOpen(false)}
       />
 
-      <Tabs defaultValue="members">
+      <Tabs defaultValue="members" onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="members">MEMBERS</TabsTrigger>
           <TabsTrigger value="levels">LEVELS</TabsTrigger>
