@@ -32,8 +32,8 @@ function hashSeed(seed: string): number {
   return Math.abs(hash);
 }
 
-const SIZE_CLASSES = { sm: "h-8 w-8", md: "h-9 w-9", lg: "h-14 w-14" } as const;
-const ICON_SIZE_CLASSES = { sm: "h-3.5 w-3.5", md: "h-4 w-4", lg: "h-6 w-6" } as const;
+const SIZE_CLASSES = { sm: "h-8 w-8", md: "h-9 w-9", lg: "h-14 w-14", xl: "h-20 w-20" } as const;
+const ICON_SIZE_CLASSES = { sm: "h-3.5 w-3.5", md: "h-4 w-4", lg: "h-6 w-6", xl: "h-9 w-9" } as const;
 
 export function HunterAvatar({
   seed,
@@ -48,7 +48,7 @@ export function HunterAvatar({
   /** A real uploaded profile picture (User.image), if set — takes priority
    * over the generated icon. */
   image?: string | null;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }) {
   const sizeClasses = SIZE_CLASSES[size];

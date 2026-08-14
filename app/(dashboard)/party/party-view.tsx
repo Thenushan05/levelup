@@ -337,7 +337,7 @@ export function PartyView({
           {memberList.map((m) => (
             <SystemPanel key={m.userId} noMotion className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <HunterAvatar seed={m.userId} image={m.image} />
+                <HunterAvatar seed={m.userId} image={m.image} size="lg" />
                 <div>
                   <p className="heading-system flex items-center gap-1.5 text-sm">
                     {m.name}
@@ -387,6 +387,7 @@ export function PartyView({
                 {i + 1}
               </span>
               {i === 0 && <Crown className="h-4 w-4 shrink-0 text-rank" />}
+              <HunterAvatar seed={row.userId} image={row.image} size="sm" />
               <RankBadge rank={row.rank} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className={cn("heading-system truncate text-sm", row.isMe && "text-glow-violet")}>
@@ -419,10 +420,13 @@ export function PartyView({
           ) : (
             items.map((a) => (
               <SystemPanel key={a.id} noMotion className="space-y-2">
-                <p className="text-sm">
-                  <span className="heading-system">{a.title}</span>
-                  {a.message && <span className="text-muted-foreground"> — {a.message}</span>}
-                </p>
+                <div className="flex items-start gap-2.5">
+                  <HunterAvatar seed={a.actorUserId ?? a.actorName} image={a.actorImage} size="sm" />
+                  <p className="text-sm">
+                    <span className="heading-system">{a.title}</span>
+                    {a.message && <span className="text-muted-foreground"> — {a.message}</span>}
+                  </p>
+                </div>
                 <div className="flex items-center gap-1.5">
                   {REACTIONS.map((emoji) => {
                     const r = a.reactions.find((x) => x.emoji === emoji);
@@ -490,6 +494,7 @@ export function PartyView({
               <div className="flex items-center gap-3">
                 <span className="heading-system w-5 text-center text-sm text-muted-foreground">{i + 1}</span>
                 {i === 0 && row.completed > 0 && <Crown className="h-4 w-4 text-rank" />}
+                <HunterAvatar seed={row.userId} image={row.image} size="sm" />
                 <p className="heading-system text-sm">{row.name}</p>
               </div>
               <span className="label-system-accent">

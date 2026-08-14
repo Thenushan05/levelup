@@ -169,6 +169,7 @@ export interface PartyMemberDTO {
 interface WeeklyCompletionRow {
   userId: string;
   name: string;
+  image: string | null;
   level: number;
   completed: number;
   required: number;
@@ -178,18 +179,19 @@ interface WeeklyCompletionRow {
  * leaderboard tab. Shared so the MVP crown (getPartyMembers) and the leaderboard
  * (getLeaderboard) can never disagree about who's actually on top. */
 async function computeWeeklyCompletions(memberIds: Types.ObjectId[]): Promise<WeeklyCompletionRow[]> {
-  const users = await User.find({ _id: { $in: memberIds } }).select("name activeTemplateId level").lean();
+  const users = await User.find({ _id: { $in: memberIds } }).select("name image activeTemplateId level").lean();
   const today = todayKey();
   const week = weekRange(today);
 
   return Promise.all(
     users.map(async (u) => {
+      const image = u.image ?? null;
       if (!u.activeTemplateId) {
-        return { userId: u._id.toString(), name: u.name, level: u.level, completed: 0, required: 0 };
+        return { userId: u._id.toString(), name: u.name, image, level: u.level, completed: 0, required: 0 };
       }
       const template = await WorkoutTemplate.findById(u.activeTemplateId).lean();
       if (!template) {
-        return { userId: u._id.toString(), name: u.name, level: u.level, completed: 0, required: 0 };
+        return { userId: u._id.toString(), name: u.name, image, level: u.level, completed: 0, required: 0 };
       }
       const requiredDates = week.filter((d) => {
         const entry = template.schedule.find((s) => s.dayOfWeek === dayOfWeekFromKey(d));
@@ -200,7 +202,7 @@ async function computeWeeklyCompletions(memberIds: Types.ObjectId[]): Promise<We
         date: { $in: requiredDates },
         status: "complete",
       });
-      return { userId: u._id.toString(), name: u.name, level: u.level, completed, required: requiredDates.length };
+      return { userId: u._id.toString(), name: u.name, image, level: u.level, completed, required: requiredDates.length };
     })
   );
 }
@@ -345,7 +347,9 @@ export interface ActivityCommentDTO {
 
 export interface PartyActivityDTO {
   id: string;
+  actorUserId: string | null;
   actorName: string;
+  actorImage: string | null;
   title: string;
   message: string;
   createdAt: string;
@@ -359,6 +363,10 @@ export async function getPartyActivity(groupId: string, limit = 30): Promise<Par
 
   const docs = await Notification.find({ groupId }).sort({ createdAt: -1 }).limit(limit).lean();
 
+  const actorIds = [...new Set(docs.map((d) => d.actorUserId?.toString()).filter((id): id is string => !!id))];
+  const actors = await User.find({ _id: { $in: actorIds } }).select("image").lean();
+  const imageByActorId = new Map(actors.map((a) => [a._id.toString(), a.image ?? null]));
+
   return docs.map((d) => {
     const emojiCounts = new Map<string, { count: number; reactedByMe: boolean }>();
     for (const r of d.reactions ?? []) {
@@ -369,7 +377,9 @@ export async function getPartyActivity(groupId: string, limit = 30): Promise<Par
     }
     return {
       id: d._id.toString(),
+      actorUserId: d.actorUserId?.toString() ?? null,
       actorName: d.actorName ?? "System",
+      actorImage: d.actorUserId ? (imageByActorId.get(d.actorUserId.toString()) ?? null) : null,
       title: d.title,
       message: d.message ?? "",
       createdAt: new Date(d.createdAt).toISOString(),
@@ -449,6 +459,7 @@ export async function reactToActivity(input: ReactionInput): Promise<PartyAction
 export interface LeaderboardRowDTO {
   userId: string;
   name: string;
+  image: string | null;
   level: number;
   completed: number;
   required: number;
