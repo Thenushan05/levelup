@@ -147,6 +147,43 @@ export function welcomeEmail(name: string): EmailContent {
   };
 }
 
+export function otpEmail(code: string): EmailContent {
+  const appUrl = getAppUrl();
+
+  const bodyHtml = `
+    <div style="text-align: center; margin-bottom: 8px;">
+      <h2 style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #0f172a;">
+        Verify your email
+      </h2>
+      <p style="margin: 0 0 24px; font-size: 14px; color: #475569; line-height: 1.6;">
+        Enter this code to finish setting up your LevelUp account.
+      </p>
+    </div>
+
+    <div style="text-align: center; margin: 0 0 20px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px;">
+        <tr>
+          <td style="padding: 18px 36px;">
+            <span style="font-family: 'Courier New', Courier, monospace; font-size: 34px; font-weight: 800; letter-spacing: 0.35em; color: #0284c7;">
+              ${code}
+            </span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="margin: 0 0 24px; font-size: 13px; color: #64748b; text-align: center; line-height: 1.5;">
+      This code expires in 10 minutes. Didn&rsquo;t request it? You can safely ignore this email.
+    </p>
+  `;
+
+  return {
+    subject: `${code} is your LevelUp verification code`,
+    html: emailShell("Verify Your Email", "EMAIL VERIFICATION", bodyHtml),
+    text: `Your LevelUp verification code is: ${code}\n\nEnter this code in the app to finish setting up your account. It expires in 10 minutes.\n\nDidn't request this? You can safely ignore this email.\n\n${appUrl}`,
+  };
+}
+
 const CHEER_QUOTES = [
   "Lace up your shoes, head to the gym, and crush your sets today!",
   "The hardest rep is walking through the gym door. Get moving!",
