@@ -16,11 +16,16 @@ function getTransporter(): nodemailer.Transporter | null {
   return transporter;
 }
 
+function getAppUrl(): string {
+  if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL.replace(/\/$/, "");
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
+  return "http://localhost:3000";
+}
+
 export interface EmailContent {
   subject: string;
   html: string;
-  /** Plain-text alternative — sending HTML with no text part is itself a spam-filter signal,
-   * on top of everything else a brand-new sending account is already fighting against. */
+  /** Plain-text alternative — sending HTML with no text part is itself a spam-filter signal. */
   text: string;
 }
 
@@ -52,41 +57,165 @@ export async function sendEmail(params: { to: string } & EmailContent): Promise<
   }
 }
 
-// Plain, light-background, minimal-styling shell. A heavily-themed dark HTML template with no
-// plain-text alternative reads as "marketing/automated" to spam filters — deliberately kept
-// simple here since that matters more for a brand-new sending account than visual polish does.
-function emailShell(title: string, bodyHtml: string): string {
-  return `
-    <div style="font-family: Arial, Helvetica, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
-      <p style="font-size: 12px; letter-spacing: 0.1em; color: #666666; text-transform: uppercase; margin: 0 0 8px;">LevelUp</p>
-      <h1 style="font-size: 18px; margin: 0 0 16px;">${title}</h1>
-      ${bodyHtml}
-      <p style="font-size: 12px; color: #888888; margin-top: 24px; border-top: 1px solid #eeeeee; padding-top: 12px;">
-        Sent by LevelUp. Reply to this email if you have questions.
-      </p>
-    </div>
-  `;
+/**
+ * Clean, modern light-themed shell for LevelUp email notifications.
+ */
+function emailShell(title: string, subtitle: string, bodyHtml: string): string {
+  const appUrl = getAppUrl();
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #0f172a;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f1f5f9; table-layout: fixed; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 0 15px 0 rgba(2, 132, 199, 0.08);">
+          
+          <!-- Top Accent Line -->
+          <tr>
+            <td height="5" style="background: linear-gradient(90deg, #0284c7, #06b6d4, #f97316);"></td>
+          </tr>
+
+          <!-- LevelUp Header (No ASCEND) -->
+          <tr>
+            <td style="padding: 28px 32px 20px; text-align: center; border-bottom: 1px solid #f1f5f9;">
+              <span style="font-family: 'Courier New', Courier, monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #0284c7; display: block; margin-bottom: 6px;">
+                ✦ ${subtitle} ✦
+              </span>
+              <h1 style="margin: 0; font-size: 24px; font-weight: 900; letter-spacing: 0.12em; color: #0f172a; text-transform: uppercase;">
+                LEVELUP
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Main Body -->
+          <tr>
+            <td style="padding: 28px 32px 24px;">
+              ${bodyHtml}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 32px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
+              <p style="margin: 0 0 4px; font-family: 'Courier New', Courier, monospace; font-size: 10px; letter-spacing: 0.15em; color: #64748b; text-transform: uppercase;">
+                LEVELUP SYSTEM &bull; GYM NUDGE SERVICE
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.5;">
+                Level Up Your Training &bull; <a href="${appUrl}" style="color: #0284c7; font-weight: 600; text-decoration: none;">Open App</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 export function welcomeEmail(name: string): EmailContent {
+  const appUrl = getAppUrl();
   return {
-    subject: "Welcome to LevelUp",
+    subject: "Welcome to LevelUp — Ready to Train!",
     html: emailShell(
-      `Welcome, ${name}`,
-      `<p style="font-size: 14px; line-height: 1.6;">Your account is ready. Complete onboarding, pick a routine, and log your first workout to start earning XP.</p>`
+      "Welcome to LevelUp",
+      "GET STARTED",
+      `
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h2 style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #0f172a;">
+          Welcome, <span style="color: #0284c7;">${name}</span>!
+        </h2>
+        <p style="margin: 0; font-size: 14px; color: #475569; line-height: 1.6;">
+          Your account is ready. Pick your workout routine, head to the gym, and start logging your workouts to earn XP and level up.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin: 28px 0 12px;">
+        <a href="${appUrl}/dashboard" target="_blank" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #0284c7, #06b6d4); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);">
+          START YOUR WORKOUT &rarr;
+        </a>
+      </div>
+      `
     ),
-    text: `Welcome to LevelUp, ${name}.\n\nYour account is ready. Complete onboarding, pick a routine, and log your first workout to start earning XP.`,
+    text: `Welcome to LevelUp, ${name}.\n\nYour account is ready. Complete onboarding, pick a routine, and log your first workout to start earning XP.\n\nEnter LevelUp: ${appUrl}/dashboard`,
   };
 }
 
+const CHEER_QUOTES = [
+  "Lace up your shoes, head to the gym, and crush your sets today!",
+  "The hardest rep is walking through the gym door. Get moving!",
+  "No excuses today! The weights are waiting for you at the gym.",
+  "Your party is putting in the sweat at the gym — don't fall behind!",
+  "Show up to the gym today, level up tomorrow. Every set counts!",
+  "Consistency is built at the gym. Step up and clear today's workout!",
+  "Transformations happen in the gym. Get in there and get it done!",
+];
+
+function pickCheerQuote(): string {
+  return CHEER_QUOTES[Math.floor(Math.random() * CHEER_QUOTES.length)];
+}
+
 export function cheerEmail(actorName: string): EmailContent {
+  const quote = pickCheerQuote();
+  const appUrl = getAppUrl();
+
+  const bodyHtml = `
+    <!-- Hero Cheer Banner -->
+    <div style="text-align: center; margin-bottom: 24px;">
+      <div style="display: inline-block; background: linear-gradient(135deg, #fff7ed, #ffedd5); border: 1px solid #fed7aa; border-radius: 9999px; padding: 8px 20px; margin-bottom: 20px;">
+        <span style="font-size: 13px; font-weight: 800; letter-spacing: 0.1em; color: #ea580c; text-transform: uppercase;">
+          🏋️‍♂️ TIME TO HIT THE GYM
+        </span>
+      </div>
+
+      <h2 style="margin: 0 0 12px; font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.3;">
+        <span style="color: #0284c7;">${actorName}</span> is calling you to the gym!
+      </h2>
+
+      <p style="margin: 0; font-size: 15px; color: #475569; line-height: 1.6;">
+        <strong style="color: #0f172a;">${actorName}</strong> noticed you haven't logged your workout today. It's time to head to the gym, get your sets done, and keep your streak strong!
+      </p>
+    </div>
+
+    <!-- Motivational Gym Directive Box -->
+    <div style="margin: 24px 0;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 8px; border-top: 1px solid #e0f2fe; border-right: 1px solid #e0f2fe; border-bottom: 1px solid #e0f2fe;">
+        <tr>
+          <td style="padding: 18px 22px;">
+            <div style="font-family: 'Courier New', Courier, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #0284c7; margin-bottom: 6px;">
+              [ GYM MOTIVATION ]
+            </div>
+            <p style="margin: 0; font-size: 14px; font-style: italic; color: #0369a1; line-height: 1.6; font-weight: 500;">
+              &ldquo;${quote}&rdquo;
+            </p>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Call to Action Button -->
+    <div style="text-align: center; margin: 28px 0 12px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
+        <tr>
+          <td align="center" style="border-radius: 12px; background: linear-gradient(135deg, #0284c7, #06b6d4); box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);">
+            <a href="${appUrl}/quest" target="_blank" style="display: inline-block; padding: 15px 36px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: 800; letter-spacing: 0.12em; color: #ffffff; text-decoration: none; text-transform: uppercase; border-radius: 12px;">
+              HIT THE GYM NOW &rarr;
+            </a>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
+
   return {
-    subject: `${actorName} sent you a cheer`,
-    html: emailShell(
-      "You've been cheered on",
-      `<p style="font-size: 14px; line-height: 1.6;"><strong>${actorName}</strong> noticed you haven't started today's workout yet and sent you a quick cheer.</p>
-       <p style="font-size: 14px; line-height: 1.6;">Open LevelUp when you get a chance.</p>`
-    ),
-    text: `${actorName} noticed you haven't started today's workout yet and sent you a quick cheer.\n\nOpen LevelUp when you get a chance.`,
+    subject: `${actorName} is calling you to the gym! 🏋️‍♂️🔥`,
+    html: emailShell(`${actorName} called you to the gym`, "PARTY GYM NUDGE", bodyHtml),
+    text: `${actorName} noticed you haven't logged your workout today. It's time to head to the gym, get your sets done, and keep your streak strong!\n\n"${quote}"\n\nHit the gym and log your workout: ${appUrl}/quest`,
   };
 }
