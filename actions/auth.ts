@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { isAdminEmail } from "@/lib/admin";
+import { sendEmail, welcomeEmail } from "@/lib/email";
 import {
   registerSchema,
   forgotPasswordSchema,
@@ -33,6 +34,9 @@ export async function registerUser(input: RegisterInput) {
     passwordHash,
     isAdmin: isAdminEmail(parsed.data.email),
   });
+
+  // Best-effort — sendEmail() never throws, so a delivery failure never blocks registration.
+  await sendEmail({ to: user.email, ...welcomeEmail(user.name) });
 
   return { success: true as const, userId: user._id.toString() };
 }

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Crown, Megaphone, Check, Trash2 } from "lucide-react";
+import { Copy, Crown, Megaphone, Check, Trash2, RefreshCw } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
@@ -61,8 +61,27 @@ export function PartyView({
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [nudgedIds, setNudgedIds] = useState<Set<string>>(new Set());
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [refreshingMembers, setRefreshingMembers] = useState(false);
+  const [refreshingActivity, setRefreshingActivity] = useState(false);
   const [, startTransition] = useTransition();
   const nextOptimisticId = useRef(0);
+  const activityFetchGuard = useRef(false);
+  const memberFetchGuard = useRef(false);
+  const hasMountedMembersTab = useRef(false);
+
+  /** Collapses near-duplicate calls into one — e.g. the effect's own initial call landing
+   * within milliseconds of the browser's own "focus" event firing right after page load, or
+   * React Strict Mode's dev-only double-invoke of effects. Guard clears itself shortly after,
+   * so a genuine later refocus still triggers a fresh fetch. */
+  function withFetchGuard(guard: { current: boolean }, run: () => Promise<unknown>) {
+    if (guard.current) return;
+    guard.current = true;
+    run().finally(() => {
+      setTimeout(() => {
+        guard.current = false;
+      }, 1500);
+    });
+  }
 
   // No websocket/push infra exists yet, so another member's reaction or reply only reaches
   // this page via a fresh fetch. No timer at all, by design — this only refetches on events
@@ -75,11 +94,13 @@ export function PartyView({
 
     function refetch() {
       if (document.hidden) return;
-      getPartyActivity(party.id)
-        .then(setItems)
-        .catch(() => {
-          // Transient network/auth hiccup — the next focus/tab-switch will just try again.
-        });
+      withFetchGuard(activityFetchGuard, () =>
+        getPartyActivity(party.id)
+          .then(setItems)
+          .catch(() => {
+            // Transient network/auth hiccup — the next focus/tab-switch will just try again.
+          })
+      );
     }
 
     refetch(); // catch up immediately on switching to the tab
@@ -99,14 +120,31 @@ export function PartyView({
 
     function refetch() {
       if (document.hidden) return;
-      getPartyMembers(party.id)
-        .then(setMemberList)
-        .catch(() => {
-          // Transient network/auth hiccup — the next focus/tab-switch will just try again.
-        });
+      withFetchGuard(memberFetchGuard, () =>
+        getPartyMembers(party.id)
+          .then(setMemberList)
+          .catch(() => {
+            // Transient network/auth hiccup — the next focus/tab-switch will just try again.
+          })
+      );
     }
 
-    refetch();
+    // Members is the default tab, so this effect's very first run *is* the initial page load
+    // — the server rendered `members` moments ago, so an immediate client refetch here would
+    // just be requesting the exact same data again. Arm the guard as if we'd just fetched
+    // (also absorbs the browser's tendency to fire a spurious `focus` event right after load)
+    // instead of actually calling the action; every later switch back to this tab does a real
+    // fetch, since real time has passed by then.
+    if (hasMountedMembersTab.current) {
+      refetch();
+    } else {
+      hasMountedMembersTab.current = true;
+      memberFetchGuard.current = true;
+      setTimeout(() => {
+        memberFetchGuard.current = false;
+      }, 1500);
+    }
+
     document.addEventListener("visibilitychange", refetch);
     window.addEventListener("focus", refetch);
     return () => {
@@ -114,6 +152,24 @@ export function PartyView({
       window.removeEventListener("focus", refetch);
     };
   }, [party.id, activeTab]);
+
+  // Explicit, on-demand refresh — independent of the auto-refetch guard above, so clicking
+  // this always fires a real request (with its own disabled-while-loading state instead).
+  function handleRefreshMembers() {
+    setRefreshingMembers(true);
+    getPartyMembers(party.id)
+      .then(setMemberList)
+      .catch((err) => showErrorToast(err instanceof Error ? err.message : "Unable to refresh members."))
+      .finally(() => setRefreshingMembers(false));
+  }
+
+  function handleRefreshActivity() {
+    setRefreshingActivity(true);
+    getPartyActivity(party.id)
+      .then(setItems)
+      .catch((err) => showErrorToast(err instanceof Error ? err.message : "Unable to refresh activity."))
+      .finally(() => setRefreshingActivity(false));
+  }
 
   function handleReact(notificationId: string, emoji: (typeof REACTIONS)[number]) {
     setItems((prev) =>
@@ -259,6 +315,18 @@ export function PartyView({
         </TabsList>
 
         <TabsContent value="members" className="space-y-2.5 pt-4">
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleRefreshMembers}
+              disabled={refreshingMembers}
+              aria-label="Refresh members"
+              title="Refresh members"
+            >
+              <RefreshCw className={cn("h-4 w-4", refreshingMembers && "animate-spin")} />
+            </Button>
+          </div>
           {memberList.map((m) => (
             <SystemPanel key={m.userId} noMotion className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -337,6 +405,18 @@ export function PartyView({
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-2.5 pt-4">
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleRefreshActivity}
+              disabled={refreshingActivity}
+              aria-label="Refresh activity"
+              title="Refresh activity"
+            >
+              <RefreshCw className={cn("h-4 w-4", refreshingActivity && "animate-spin")} />
+            </Button>
+          </div>
           {items.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground">No activity yet. Get training!</p>
           ) : (
