@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getTodayQuest, getExerciseDetail } from "@/actions/workout";
 import { ExerciseDetailClient } from "./exercise-detail-client";
 
-export const metadata: Metadata = { title: "Objective — ASCEND" };
+export const metadata: Metadata = { title: "Objective — LevelUp" };
 
 export default async function ExerciseDetailPage({
   params,

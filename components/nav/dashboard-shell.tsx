@@ -153,7 +153,7 @@ export function DashboardShell({
       >
         <Link href="/dashboard" className="mb-1 px-3">
           <span className="font-heading text-2xl font-black tracking-[0.2em] text-glow-cyan animate-hud-flicker">
-            ASCEND
+            LevelUp
           </span>
         </Link>
         <p className="label-system mb-7 px-3 text-[10px]">Level Up Your Training</p>
@@ -188,7 +188,7 @@ export function DashboardShell({
         <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-md">
           <div className="flex items-center justify-between px-4 py-3 sm:px-6">
             <div className="lg:hidden">
-              <span className="font-heading text-lg font-black tracking-[0.2em] text-glow-cyan">ASCEND</span>
+              <span className="font-heading text-lg font-black tracking-[0.2em] text-glow-cyan">LevelUp</span>
             </div>
             <div className="hidden items-center gap-2.5 lg:flex">
               <span className="h-1.5 w-1.5 animate-pulse-glow rounded-full bg-primary" style={{ boxShadow: "0 0 8px 1px var(--primary)" }} />

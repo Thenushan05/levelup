@@ -133,7 +133,7 @@ export function OnboardingWizard({
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-12">
       <div className="mb-6 text-center">
-        <span className="font-heading text-2xl font-bold tracking-[0.3em] text-glow-cyan">ASCEND</span>
+        <span className="font-heading text-2xl font-bold tracking-[0.3em] text-glow-cyan">LevelUp</span>
         <p className="label-system mt-1">Player Onboarding</p>
       </div>
 

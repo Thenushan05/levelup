@@ -3,7 +3,7 @@ import { getMyParty, getPartyMembers, getPartyActivity, getLeaderboard, getLevel
 import { PartyView } from "./party-view";
 import { CreateJoinParty } from "./create-join-party";
 
-export const metadata: Metadata = { title: "Party — ASCEND" };
+export const metadata: Metadata = { title: "Party — LevelUp" };
 
 export default async function PartyPage() {
   const party = await getMyParty();

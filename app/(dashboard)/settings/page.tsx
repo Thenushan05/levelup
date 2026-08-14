@@ -5,7 +5,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { SettingsView } from "./settings-view";
 
-export const metadata: Metadata = { title: "Settings — ASCEND" };
+export const metadata: Metadata = { title: "Settings — LevelUp" };
 
 export default async function SettingsPage() {
   const session = await auth();

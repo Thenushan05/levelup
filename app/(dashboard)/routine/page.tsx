@@ -3,7 +3,7 @@ import { getActiveRoutineDetail, getBuiltInTemplates } from "@/actions/onboardin
 import { RoutineView } from "./routine-view";
 import { TemplateSwitcher } from "./template-switcher";
 
-export const metadata: Metadata = { title: "Routine — ASCEND" };
+export const metadata: Metadata = { title: "Routine — LevelUp" };
 
 export default async function RoutinePage() {
   const [routine, templates] = await Promise.all([getActiveRoutineDetail(), getBuiltInTemplates()]);

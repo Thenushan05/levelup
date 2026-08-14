@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/system/empty-state";
 import { formatDisplayDate } from "@/lib/dates";
 import { DeleteUserButton } from "./delete-user-button";
 
-export const metadata: Metadata = { title: "Admin — Users — ASCEND" };
+export const metadata: Metadata = { title: "Admin — Users — LevelUp" };
 
 export default async function AdminUsersPage() {
   const users = await getAllUsersAdmin();

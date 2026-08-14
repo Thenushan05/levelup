@@ -4,7 +4,7 @@ import { getCalendarMonth } from "@/actions/history";
 import { getPlayerStatus } from "@/actions/player";
 import { ProgressView } from "./progress-view";
 
-export const metadata: Metadata = { title: "Progress — ASCEND" };
+export const metadata: Metadata = { title: "Progress — LevelUp" };
 
 export default async function ProgressPage() {
   const now = new Date();
