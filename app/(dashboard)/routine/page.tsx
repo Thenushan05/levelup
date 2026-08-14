@@ -9,7 +9,7 @@ export default async function RoutinePage() {
   const [routine, templates] = await Promise.all([getActiveRoutineDetail(), getBuiltInTemplates()]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-w-0">
       <RoutineView routine={routine} />
       <TemplateSwitcher templates={templates} activeSlug={routine?.slug ?? null} />
     </div>

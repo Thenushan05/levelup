@@ -70,20 +70,20 @@ export function TemplateSwitcher({
               <div
                 key={t.slug}
                 className={cn(
-                  "flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between",
+                  "flex flex-col gap-3 rounded-lg border p-3.5 sm:p-4 sm:flex-row sm:items-center sm:justify-between min-w-0",
                   isActive ? "border-primary/50 bg-primary/5" : "border-border"
                 )}
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="heading-system text-base text-glow-cyan">{t.name}</p>
+                    <p className="heading-system text-base text-glow-cyan break-words">{t.name}</p>
                     {isActive && (
-                      <span className="flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold text-success">
+                      <span className="flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold text-success shrink-0">
                         <Check className="h-3 w-3" /> ACTIVE
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">{t.description}</p>
+                  <p className="text-sm text-muted-foreground break-words">{t.description}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t.dayCount.workout} training days · {t.dayCount.rest} recovery · {t.dayCount.optional} optional
                   </p>
@@ -92,7 +92,7 @@ export function TemplateSwitcher({
                   <Button
                     onClick={() => requestSwitch(t.slug, t.name)}
                     disabled={pendingSlug !== null}
-                    className="shrink-0"
+                    className="w-full shrink-0 sm:w-auto"
                   >
                     {pendingSlug === t.slug ? "SWITCHING..." : "ACTIVATE"}
                   </Button>
