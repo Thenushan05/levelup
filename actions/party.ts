@@ -24,6 +24,7 @@ import {
 import { dayOfWeekFromKey, todayKey, weekRange } from "@/lib/dates";
 import { requiredXpForLevel } from "@/lib/xp";
 import { notifyUser } from "@/lib/notify";
+import { sendEmail, cheerEmail } from "@/lib/email";
 import type { Rank } from "@/types";
 
 const nanoid = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
@@ -283,6 +284,13 @@ export async function nudgeMember(input: NudgeInput): Promise<void> {
     nudgedBy: actor._id.toString(),
     date: today,
   });
+
+  // Best-effort — sendEmail() never throws, so a delivery failure never blocks the cheer itself
+  // (the in-app notification above is the source of truth either way).
+  const target = await User.findById(targetId).select("email").lean();
+  if (target?.email) {
+    await sendEmail({ to: target.email, ...cheerEmail(actor.name) });
+  }
 }
 
 export interface ActivityReactionDTO {
