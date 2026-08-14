@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerRegister } from "@/components/providers/service-worker-register";
 import { InstallPrompt } from "@/components/providers/install-prompt";
+import { OfflineSyncManager } from "@/components/providers/offline-sync";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ServiceWorkerRegister />
       {children}
       <InstallPrompt />
+      <OfflineSyncManager />
       <Toaster
         position="top-right"
         theme="dark"
