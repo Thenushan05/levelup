@@ -9,7 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DeleteTemplateButton } from "./delete-template-button";
 
-export const metadata: Metadata = { title: "Admin — Templates — ASCEND" };
+export const metadata: Metadata = { title: "Admin — Templates — LevelUp" };
 
 export default async function AdminTemplatesPage() {
   const templates = await getAllTemplatesAdmin();

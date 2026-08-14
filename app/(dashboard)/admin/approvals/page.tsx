@@ -3,7 +3,7 @@ import { getPendingApprovals } from "@/actions/approvals";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { ApprovalsView } from "./approvals-view";
 
-export const metadata: Metadata = { title: "Admin — Approvals — ASCEND" };
+export const metadata: Metadata = { title: "Admin — Approvals — LevelUp" };
 
 export default async function AdminApprovalsPage() {
   const approvals = await getPendingApprovals();

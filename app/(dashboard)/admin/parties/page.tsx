@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/system/empty-state";
 import { formatDisplayDate } from "@/lib/dates";
 import { DeletePartyButton } from "./delete-party-button";
 
-export const metadata: Metadata = { title: "Admin — Parties — ASCEND" };
+export const metadata: Metadata = { title: "Admin — Parties — LevelUp" };
 
 export default async function AdminPartiesPage() {
   const parties = await getAllPartiesAdmin();

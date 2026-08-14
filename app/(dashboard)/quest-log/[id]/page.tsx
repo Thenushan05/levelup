@@ -8,7 +8,7 @@ import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { formatDisplayDate, formatDuration } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Quest Detail — ASCEND" };
+export const metadata: Metadata = { title: "Quest Detail — LevelUp" };
 
 export default async function QuestLogDetailPage({
   params,

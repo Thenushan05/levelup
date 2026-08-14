@@ -38,7 +38,7 @@ export async function sendEmail(params: { to: string } & EmailContent): Promise<
 
   try {
     await t.sendMail({
-      from: `"ASCEND" <${EMAIL_USER}>`,
+      from: `"LevelUp" <${EMAIL_USER}>`,
       replyTo: EMAIL_USER,
       to: params.to,
       subject: params.subject,
@@ -58,11 +58,11 @@ export async function sendEmail(params: { to: string } & EmailContent): Promise<
 function emailShell(title: string, bodyHtml: string): string {
   return `
     <div style="font-family: Arial, Helvetica, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
-      <p style="font-size: 12px; letter-spacing: 0.1em; color: #666666; text-transform: uppercase; margin: 0 0 8px;">ASCEND</p>
+      <p style="font-size: 12px; letter-spacing: 0.1em; color: #666666; text-transform: uppercase; margin: 0 0 8px;">LevelUp</p>
       <h1 style="font-size: 18px; margin: 0 0 16px;">${title}</h1>
       ${bodyHtml}
       <p style="font-size: 12px; color: #888888; margin-top: 24px; border-top: 1px solid #eeeeee; padding-top: 12px;">
-        Sent by ASCEND. Reply to this email if you have questions.
+        Sent by LevelUp. Reply to this email if you have questions.
       </p>
     </div>
   `;
@@ -70,12 +70,12 @@ function emailShell(title: string, bodyHtml: string): string {
 
 export function welcomeEmail(name: string): EmailContent {
   return {
-    subject: "Welcome to ASCEND",
+    subject: "Welcome to LevelUp",
     html: emailShell(
       `Welcome, ${name}`,
       `<p style="font-size: 14px; line-height: 1.6;">Your account is ready. Complete onboarding, pick a routine, and log your first workout to start earning XP.</p>`
     ),
-    text: `Welcome to ASCEND, ${name}.\n\nYour account is ready. Complete onboarding, pick a routine, and log your first workout to start earning XP.`,
+    text: `Welcome to LevelUp, ${name}.\n\nYour account is ready. Complete onboarding, pick a routine, and log your first workout to start earning XP.`,
   };
 }
 
@@ -85,8 +85,8 @@ export function cheerEmail(actorName: string): EmailContent {
     html: emailShell(
       "You've been cheered on",
       `<p style="font-size: 14px; line-height: 1.6;"><strong>${actorName}</strong> noticed you haven't started today's workout yet and sent you a quick cheer.</p>
-       <p style="font-size: 14px; line-height: 1.6;">Open ASCEND when you get a chance.</p>`
+       <p style="font-size: 14px; line-height: 1.6;">Open LevelUp when you get a chance.</p>`
     ),
-    text: `${actorName} noticed you haven't started today's workout yet and sent you a quick cheer.\n\nOpen ASCEND when you get a chance.`,
+    text: `${actorName} noticed you haven't started today's workout yet and sent you a quick cheer.\n\nOpen LevelUp when you get a chance.`,
   };
 }

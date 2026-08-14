@@ -12,7 +12,7 @@ import { formatDisplayDate } from "@/lib/dates";
 import { BMI_CATEGORY_TONE, kgToLbs } from "@/lib/nutrition";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Diet & Body — ASCEND" };
+export const metadata: Metadata = { title: "Diet & Body — LevelUp" };
 
 const BMI_SCALE_MIN = 15;
 const BMI_SCALE_MAX = 40;

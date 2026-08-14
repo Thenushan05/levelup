@@ -20,9 +20,9 @@ const fontBody = Rajdhani({
 });
 
 export const metadata: Metadata = {
-  title: "ASCEND — Level Up Your Training",
+  title: "LevelUp — Level Up Your Training",
   description:
-    "ASCEND turns your real-life gym routine into a leveling system. Track workouts, earn XP, level up, and rank up.",
+    "LevelUp turns your real-life gym routine into a leveling system. Track workouts, earn XP, level up, and rank up.",
 };
 
 export const viewport: Viewport = {

@@ -6,7 +6,7 @@ import { getWeeklyQuestStatus } from "@/actions/progress";
 import { getMyParty, getPartyActivity } from "@/actions/party";
 import { DashboardClient } from "./dashboard-client";
 
-export const metadata: Metadata = { title: "Dashboard — ASCEND" };
+export const metadata: Metadata = { title: "Dashboard — LevelUp" };
 
 export default async function DashboardPage() {
   const [status, quest, attendance, weekly, party, calorieProgress] = await Promise.all([

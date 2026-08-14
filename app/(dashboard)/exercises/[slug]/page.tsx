@@ -9,7 +9,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  return { title: `${slug.replace(/-/g, " ")} — ASCEND` };
+  return { title: `${slug.replace(/-/g, " ")} — LevelUp` };
 }
 
 export default async function ExerciseProgressPage({

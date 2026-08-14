@@ -3,7 +3,7 @@ import { getExerciseLibrary } from "@/actions/progress";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { TemplateForm } from "../template-form";
 
-export const metadata: Metadata = { title: "New Template — Admin — ASCEND" };
+export const metadata: Metadata = { title: "New Template — Admin — LevelUp" };
 
 export default async function NewTemplatePage() {
   const exercises = await getExerciseLibrary();

@@ -6,7 +6,7 @@ import { User } from "@/models/User";
 import { getBuiltInTemplates } from "@/actions/onboarding";
 import { OnboardingWizard } from "./onboarding-wizard";
 
-export const metadata: Metadata = { title: "Onboarding — ASCEND" };
+export const metadata: Metadata = { title: "Onboarding — LevelUp" };
 
 export default async function OnboardingPage() {
   const session = await auth();
