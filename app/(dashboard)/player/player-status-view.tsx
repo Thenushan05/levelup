@@ -15,7 +15,7 @@ export function PlayerStatusView({ status }: { status: PlayerStatusDTO }) {
     <div className="mx-auto max-w-2xl space-y-6">
       <SystemPanel className="flex flex-col items-center gap-3 py-8 text-center">
         <SystemLabel accent>Player</SystemLabel>
-        <HunterAvatar seed={player.id} image={player.image} size="lg" />
+        <HunterAvatar seed={player.id} image={player.image} size="xl" />
         <SystemHeading className="text-2xl">{player.name}</SystemHeading>
         <RankBadge rank={player.rank} size="lg" />
         <p className="heading-system text-3xl text-glow-cyan">LEVEL {player.level}</p>
