@@ -30,6 +30,12 @@ export interface WorkoutCalorieRowDTO extends WorkoutCalorieEstimate {
   phase: CaloriePhase;
 }
 
+export interface TotalBurnDTO {
+  totalKcal: number;
+  totalWorkouts: number;
+  totalMinutes: number;
+}
+
 export interface DietProfileDTO {
   hasBodyStats: boolean;
   weightKg: number | null;
@@ -43,6 +49,7 @@ export interface DietProfileDTO {
   foodGuidance: typeof FOOD_GUIDANCE;
   recentBurn: WorkoutCalorieRowDTO[];
   todayEstimate: WorkoutCalorieRowDTO | null;
+  totalBurn: TotalBurnDTO | null;
   lightActivityRange: { low: number; high: number } | null;
 }
 
@@ -115,6 +122,36 @@ export async function getDietProfile(): Promise<DietProfileDTO> {
     }
   }
 
+  // Lifetime total — same MET/real-duration formula as today's/recent
+  // estimates above (not the fixed-catalog sum the dashboard gauge uses),
+  // so this stays consistent with the numbers right above it on this page.
+  // Uses current bodyweight throughout, same simplification the 7-day
+  // figures already make — no historical weight-per-workout is tracked.
+  let totalBurn: TotalBurnDTO | null = null;
+  if (hasBodyStats) {
+    const allCompleted = await DailyWorkout.find({ userId: user._id, type: "workout", status: "complete" })
+      .select("totalSets startedAt completedAt")
+      .lean();
+
+    let totalKcal = 0;
+    let totalMinutes = 0;
+    let totalWorkouts = 0;
+    for (const w of allCompleted) {
+      const realMinutes = computeDurationMinutes(w.startedAt ?? null, w.completedAt ?? null);
+      const estimate = estimateWorkoutCalories({
+        weightKg: user.weightKg!,
+        type: "workout",
+        totalSets: w.totalSets,
+        durationMinutes: realMinutes,
+      });
+      if (!estimate) continue;
+      totalKcal += estimate.kcal;
+      totalMinutes += estimate.minutes;
+      totalWorkouts += 1;
+    }
+    totalBurn = { totalKcal, totalWorkouts, totalMinutes };
+  }
+
   return {
     hasBodyStats,
     weightKg: user.weightKg ?? null,
@@ -128,6 +165,7 @@ export async function getDietProfile(): Promise<DietProfileDTO> {
     foodGuidance: FOOD_GUIDANCE,
     recentBurn,
     todayEstimate,
+    totalBurn,
     lightActivityRange,
   };
 }

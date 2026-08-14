@@ -57,6 +57,11 @@ const UserSchema = new Schema(
 
     resetToken: { type: String, default: null, select: false },
     resetTokenExpiry: { type: Date, default: null, select: false },
+
+    /** "Don't ask again" on the install-app banner — tied to the account
+     * (not just a browser) so it follows the player across every device
+     * they log into, not only the one they dismissed it on. */
+    installPromptDismissed: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

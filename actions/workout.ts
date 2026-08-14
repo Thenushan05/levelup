@@ -77,6 +77,52 @@ export async function getTodayCalorieProgress(): Promise<DailyCalorieProgressDTO
   return { burned: sumCompletedExerciseCalories(joined), target: sumAllExerciseCalories(joined) };
 }
 
+export interface TotalCalorieBurnDTO {
+  totalKcal: number;
+  totalWorkouts: number;
+}
+
+/**
+ * Lifetime calorie burn using the same fixed-catalog per-exercise sum the
+ * dashboard's today gauge uses (not the MET/duration formula the Diet page's
+ * total uses) — kept consistent with the number already shown on this page.
+ * Fetches the exercise catalog once for every exercise ever logged rather
+ * than per-workout, so this stays a single extra query regardless of how
+ * many workouts have been completed.
+ */
+export async function getTotalCalorieBurn(): Promise<TotalCalorieBurnDTO> {
+  const user = await requireUserDoc();
+  const workouts = await DailyWorkout.find({ userId: user._id, type: "workout", status: "complete" })
+    .select("exercises.exerciseId exercises.status")
+    .lean();
+
+  const exerciseIds = new Set<string>();
+  for (const w of workouts) {
+    for (const e of w.exercises) exerciseIds.add(e.exerciseId.toString());
+  }
+
+  const catalogDocs = await Exercise.find({ _id: { $in: Array.from(exerciseIds) } })
+    .select("calorieBurnMin calorieBurnMax")
+    .lean();
+  const byId = new Map(catalogDocs.map((d) => [d._id.toString(), d]));
+
+  let totalKcal = 0;
+  let totalWorkouts = 0;
+  for (const w of workouts) {
+    const joined = w.exercises.map((e) => {
+      const doc = byId.get(e.exerciseId.toString());
+      return { status: e.status, calorieBurnMin: doc?.calorieBurnMin ?? null, calorieBurnMax: doc?.calorieBurnMax ?? null };
+    });
+    const estimate = sumCompletedExerciseCalories(joined);
+    if (estimate) {
+      totalKcal += estimate.kcal;
+      totalWorkouts += 1;
+    }
+  }
+
+  return { totalKcal, totalWorkouts };
+}
+
 /** Resolves (creating if needed) today's DailyWorkout from the user's active template. */
 export async function getTodayQuest(): Promise<DailyWorkoutDTO | null> {
   const user = await requireUserDoc();

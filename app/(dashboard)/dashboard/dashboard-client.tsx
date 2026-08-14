@@ -18,7 +18,7 @@ import type { PlayerStatusDTO } from "@/actions/player";
 import type { AttendanceStatusDTO } from "@/actions/attendance";
 import type { WeeklyQuestStatusDTO } from "@/actions/progress";
 import type { PartySummaryDTO, PartyActivityDTO } from "@/actions/party";
-import type { DailyCalorieProgressDTO } from "@/actions/workout";
+import type { DailyCalorieProgressDTO, TotalCalorieBurnDTO } from "@/actions/workout";
 import type { DailyWorkoutDTO } from "@/types";
 
 export function DashboardClient({
@@ -29,6 +29,7 @@ export function DashboardClient({
   party,
   activity,
   calorieProgress,
+  totalBurn,
 }: {
   status: PlayerStatusDTO;
   quest: DailyWorkoutDTO | null;
@@ -37,6 +38,7 @@ export function DashboardClient({
   party: PartySummaryDTO | null;
   activity: PartyActivityDTO[];
   calorieProgress: DailyCalorieProgressDTO;
+  totalBurn: TotalCalorieBurnDTO;
 }) {
   return (
     <div className="space-y-6">
@@ -63,7 +65,12 @@ export function DashboardClient({
         </div>
         <div className="space-y-6 lg:col-span-6">
           <DailyQuestCard quest={quest} />
-          <HealthLevelGauge quest={quest} burned={calorieProgress.burned} target={calorieProgress.target} />
+          <HealthLevelGauge
+            quest={quest}
+            burned={calorieProgress.burned}
+            target={calorieProgress.target}
+            totalBurn={totalBurn}
+          />
         </div>
         <div className="space-y-6 lg:col-span-3">
           <AttendanceCard initial={attendance} restDay={quest?.type === "rest"} />
