@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check } from "lucide-react";
 import { SystemPanel } from "@/components/system/system-panel";
@@ -135,6 +136,13 @@ export function OnboardingWizard({
       <div className="mb-6 text-center">
         <span className="font-heading text-2xl font-bold tracking-[0.3em] text-glow-cyan">LevelUp</span>
         <p className="label-system mt-1">Player Onboarding</p>
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="mt-2 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          ← Sign out and back to login
+        </button>
       </div>
 
       <SystemPanel className="space-y-6">
