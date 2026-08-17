@@ -37,3 +37,20 @@ export function pickWeightGuidance(
   const band = bandIndexForBodyWeight(bodyWeightKg);
   return weightGuidance[band] ?? null;
 }
+
+/**
+ * Whether an exercise entry should ask for a KG figure at all. Cardio and core work is
+ * unloaded, so a weight field only produces meaningless zeroes — and pull-ups (bodyweight,
+ * or assisted via a counterweight machine that offsets the user's own weight) carry no
+ * user-entered load either, regardless of muscle group.
+ */
+export function usesWeightTracking(exercise: {
+  muscleGroup: string;
+  repsUnit: "reps" | "seconds";
+  name: string;
+}): boolean {
+  if (exercise.repsUnit === "seconds") return false;
+  if (exercise.muscleGroup === "Cardio" || exercise.muscleGroup === "Core") return false;
+  if (/pull-up/i.test(exercise.name)) return false;
+  return true;
+}

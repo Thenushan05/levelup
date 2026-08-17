@@ -28,6 +28,15 @@ const ExerciseEntrySchema = new Schema(
     },
     notes: { type: String, default: "" },
     xpAwarded: { type: Boolean, default: false },
+    // Forward reference to the PendingXpAward this exercise's completion queued (same pattern
+    // as ExtraWorkout.xpAwardId) — lets approvals.ts find its way back here when an admin
+    // approves it, to flip calorieApproved below.
+    xpAwardId: { type: Schema.Types.ObjectId, ref: "PendingXpAward", default: null },
+    // Calorie burn is computed live the moment this exercise is marked complete (see
+    // lib/calories-burned.ts) and shown immediately everywhere else in the app — this flag
+    // does NOT gate that. It only gates the Calorie Tracking page's "Logged" total, which
+    // counts an exercise's burn as official only once an admin approves its XP award.
+    calorieApproved: { type: Boolean, default: false },
     sets: { type: [SetSchema], default: [] },
   },
   { _id: true }

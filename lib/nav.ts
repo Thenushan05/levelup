@@ -10,6 +10,7 @@ import {
   User,
   Settings,
   Apple,
+  Flame,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,6 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/exercises", label: "Exercise Library", icon: Dumbbell },
   { href: "/quest-log", label: "Quest Log", icon: ScrollText },
   { href: "/progress", label: "Progress", icon: LineChart, mobileLabel: "PROGRESS", mobile: true },
+  { href: "/calories", label: "Calorie Tracking", icon: Flame },
   { href: "/achievements", label: "Achievements", icon: Trophy },
   { href: "/party", label: "Party", icon: Users, mobileLabel: "PARTY", mobile: true },
   { href: "/player", label: "Profile", icon: User, mobileLabel: "PLAYER", mobile: true },

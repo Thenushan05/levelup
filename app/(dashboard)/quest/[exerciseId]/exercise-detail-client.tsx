@@ -13,6 +13,7 @@ import { updateSet, type ExerciseDetailDTO } from "@/actions/workout";
 import { showAchievementToast, showErrorToast, showSystemToast, showXpPendingToast } from "@/lib/toast-system";
 import { enqueueAction, looksLikeNetworkFailure } from "@/lib/offline-queue";
 import { formatDisplayDate } from "@/lib/dates";
+import { usesWeightTracking } from "@/lib/weight-guidance";
 import type { CatalogCalorieEstimate } from "@/lib/calories-burned";
 
 export function ExerciseDetailClient({
@@ -91,8 +92,7 @@ export function ExerciseDetailClient({
   }
 
   const unit = exercise.repsUnit;
-  // Cardio and core work is unloaded, so asking for a KG figure only produces meaningless zeroes.
-  const usesWeight = unit !== "seconds" && exercise.muscleGroup !== "Cardio" && exercise.muscleGroup !== "Core";
+  const usesWeight = usesWeightTracking(exercise);
   const range =
     exercise.targetRepsMin === exercise.targetRepsMax
       ? `${exercise.targetRepsMin}`
@@ -151,7 +151,15 @@ export function ExerciseDetailClient({
       <div className="space-y-2.5">
         <SystemLabel accent>Current Attempt</SystemLabel>
         {exercise.sets.map((s) => (
-          <SetRow key={s.id} set={s} unit={unit} showWeight={usesWeight} onSave={handleSaveSet} />
+          <SetRow
+            key={s.id}
+            set={s}
+            unit={unit}
+            showWeight={usesWeight}
+            onSave={handleSaveSet}
+            exerciseSlug={initialDetail.exerciseSlug}
+            bodyWeightKg={initialDetail.bodyWeightKg}
+          />
         ))}
       </div>
 

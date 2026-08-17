@@ -6,6 +6,7 @@ import { requireAdminDoc, requireUserId } from "@/lib/session";
 import { connectToDatabase } from "@/lib/mongodb";
 import { PendingXpAward, type PendingXpAwardDoc } from "@/models/PendingXpAward";
 import { User, type UserDoc } from "@/models/User";
+import { DailyWorkout } from "@/models/DailyWorkout";
 import { applyXp, snapshotLevel, diffLevel } from "@/lib/xp";
 import { notifyUser, notifyUserAndParty } from "@/lib/notify";
 
@@ -57,6 +58,24 @@ export async function getPendingApprovalCount(): Promise<number> {
   return PendingXpAward.countDocuments({ status: "pending" });
 }
 
+/**
+ * An exercise's calorie burn is computed and shown live the moment it's completed (see
+ * lib/calories-burned.ts) — it is NOT gated on this. Only the Calorie Tracking page's
+ * "Logged" total is: it counts an exercise's burn as official once its exercise_complete
+ * award (linked via ExerciseEntrySchema.xpAwardId, same forward-ref pattern as
+ * ExtraWorkout.xpAwardId) is actually approved here.
+ */
+async function markCalorieApproved(awardId: Types.ObjectId): Promise<void> {
+  const workout = await DailyWorkout.findOne({ "exercises.xpAwardId": awardId });
+  if (!workout) return;
+
+  const exercise = workout.exercises.find((e) => e.xpAwardId?.toString() === awardId.toString());
+  if (!exercise) return;
+
+  exercise.calorieApproved = true;
+  await workout.save();
+}
+
 async function applyApprovedAward(
   admin: HydratedDocument<UserDoc>,
   award: HydratedDocument<PendingXpAwardDoc>
@@ -78,6 +97,10 @@ async function applyApprovedAward(
   award.reviewedBy = admin._id;
   award.reviewedAt = new Date();
   await award.save();
+
+  if (award.reason === "exercise_complete") {
+    await markCalorieApproved(award._id);
+  }
 
   await notifyUser(user._id.toString(), "objective_complete", "XP Approved", `${award.title} · +${award.amount} XP`, {
     xp: award.amount,
@@ -110,6 +133,7 @@ export async function approveXpAward(id: string) {
 
   revalidatePath("/admin/approvals");
   revalidatePath("/dashboard");
+  revalidatePath("/calories");
   return { success: true as const };
 }
 
@@ -142,5 +166,6 @@ export async function approveAllPending(): Promise<{ approved: number }> {
 
   revalidatePath("/admin/approvals");
   revalidatePath("/dashboard");
+  revalidatePath("/calories");
   return { approved: pending.length };
 }

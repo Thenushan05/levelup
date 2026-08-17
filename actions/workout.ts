@@ -13,7 +13,13 @@ import { recomputeStreak } from "@/lib/streak";
 import { toDailyWorkoutDTO } from "@/lib/dto";
 import { notifyUserAndParty, notifyUser } from "@/lib/notify";
 import { updateSetSchema, exerciseNotesSchema, type UpdateSetInput, type ExerciseNotesInput } from "@/lib/validations/workout";
-import { sumCompletedExerciseCalories, sumAllExerciseCalories, type CatalogCalorieEstimate } from "@/lib/calories-burned";
+import {
+  sumCompletedExerciseCalories,
+  sumAllExerciseCalories,
+  averageLoggedWeightKg,
+  type CatalogCalorieEstimate,
+  type ExerciseCalorieInput,
+} from "@/lib/calories-burned";
 import type { AchievementUnlockedDTO, DailyWorkoutDTO } from "@/types";
 
 export interface QuestActionResult {
@@ -29,14 +35,16 @@ export interface QuestActionResult {
 }
 
 /**
- * Joins each of a workout's exercises to its shared Exercise doc's fixed calorie range.
- * Shared by every action below that reports on "today's burn" so there's one place doing it.
+ * Joins each of a workout's exercises to its shared Exercise doc's slug and fixed calorie
+ * range, plus the weight actually logged on its completed sets — everything
+ * lib/calories-burned.ts's dynamic-table-then-catalog-fallback lookup needs. Shared by every
+ * action below that reports on "today's burn" so there's one place doing it.
  */
 async function joinExerciseCalories(
-  exercises: { exerciseId: Types.ObjectId; status: string }[]
-): Promise<{ status: string; calorieBurnMin: number | null; calorieBurnMax: number | null }[]> {
+  exercises: { exerciseId: Types.ObjectId; status: string; sets: { completed: boolean; weight?: number | null }[] }[]
+): Promise<ExerciseCalorieInput[]> {
   const catalogDocs = await Exercise.find({ _id: { $in: exercises.map((e) => e.exerciseId) } })
-    .select("calorieBurnMin calorieBurnMax")
+    .select("slug calorieBurnMin calorieBurnMax")
     .lean();
   const byId = new Map(catalogDocs.map((d) => [d._id.toString(), d]));
 
@@ -44,18 +52,23 @@ async function joinExerciseCalories(
     const doc = byId.get(e.exerciseId.toString());
     return {
       status: e.status,
+      slug: doc?.slug ?? "",
       calorieBurnMin: doc?.calorieBurnMin ?? null,
       calorieBurnMax: doc?.calorieBurnMax ?? null,
+      loggedWeightKg: averageLoggedWeightKg(e.sets),
     };
   });
 }
 
-async function calorieEstimateForWorkout(workout: {
-  type: "workout" | "rest" | "optional";
-  exercises: { exerciseId: Types.ObjectId; status: string }[];
-}): Promise<CatalogCalorieEstimate | null> {
+async function calorieEstimateForWorkout(
+  workout: {
+    type: "workout" | "rest" | "optional";
+    exercises: { exerciseId: Types.ObjectId; status: string; sets: { completed: boolean; weight?: number | null }[] }[];
+  },
+  bodyWeightKg: number | null
+): Promise<CatalogCalorieEstimate | null> {
   if (workout.type !== "workout") return null;
-  return sumCompletedExerciseCalories(await joinExerciseCalories(workout.exercises));
+  return sumCompletedExerciseCalories(await joinExerciseCalories(workout.exercises), bodyWeightKg);
 }
 
 export interface DailyCalorieProgressDTO {
@@ -66,15 +79,18 @@ export interface DailyCalorieProgressDTO {
   target: CatalogCalorieEstimate | null;
 }
 
-/** Today's burned-vs-target calorie progress, for the dashboard's calorie-burn gauge. No
- * body stats required — the catalog figures aren't weight-scaled. */
+/** Today's burned-vs-target calorie progress, for the dashboard's calorie-burn gauge. Burned
+ * upgrades to the weight/bodyweight table (lib/dynamic-calorie-table.ts) for exercises it
+ * covers once a bodyweight is on file and a weight's been logged; target stays on the flat
+ * catalog figures since nothing not-yet-done has a weight to look up. */
 export async function getTodayCalorieProgress(): Promise<DailyCalorieProgressDTO> {
   const user = await requireUserDoc();
   const workout = await DailyWorkout.findOne({ userId: user._id, date: todayKey() }).lean();
   if (!workout || workout.type !== "workout") return { burned: null, target: null };
 
   const joined = await joinExerciseCalories(workout.exercises);
-  return { burned: sumCompletedExerciseCalories(joined), target: sumAllExerciseCalories(joined) };
+  const bodyWeightKg = user.weightKg ?? null;
+  return { burned: sumCompletedExerciseCalories(joined, bodyWeightKg), target: sumAllExerciseCalories(joined, bodyWeightKg) };
 }
 
 export interface TotalCalorieBurnDTO {
@@ -83,17 +99,21 @@ export interface TotalCalorieBurnDTO {
 }
 
 /**
- * Lifetime calorie burn using the same fixed-catalog per-exercise sum the
- * dashboard's today gauge uses (not the MET/duration formula the Diet page's
- * total uses) — kept consistent with the number already shown on this page.
- * Fetches the exercise catalog once for every exercise ever logged rather
- * than per-workout, so this stays a single extra query regardless of how
- * many workouts have been completed.
+ * Lifetime calorie burn using the same hybrid dynamic-table-then-catalog per-exercise sum the
+ * dashboard's today gauge uses (not the MET/duration formula the Diet page's total uses) —
+ * kept consistent with the number already shown on this page. Fetches the exercise catalog
+ * once for every exercise ever logged rather than per-workout, so this stays a single extra
+ * query regardless of how many workouts have been completed.
+ *
+ * `approvedOnly` restricts the sum to exercises whose XP award has actually been approved by
+ * an admin (see calorieApproved on ExerciseEntrySchema) — used by the Calorie Tracking page's
+ * "logged" lifetime total. The dashboard's all-time figure keeps calling this with no argument,
+ * counting everything completed regardless of approval, unchanged from before.
  */
-export async function getTotalCalorieBurn(): Promise<TotalCalorieBurnDTO> {
+export async function getTotalCalorieBurn(approvedOnly = false): Promise<TotalCalorieBurnDTO> {
   const user = await requireUserDoc();
   const workouts = await DailyWorkout.find({ userId: user._id, type: "workout", status: "complete" })
-    .select("exercises.exerciseId exercises.status")
+    .select("exercises.exerciseId exercises.status exercises.sets exercises.calorieApproved")
     .lean();
 
   const exerciseIds = new Set<string>();
@@ -102,18 +122,27 @@ export async function getTotalCalorieBurn(): Promise<TotalCalorieBurnDTO> {
   }
 
   const catalogDocs = await Exercise.find({ _id: { $in: Array.from(exerciseIds) } })
-    .select("calorieBurnMin calorieBurnMax")
+    .select("slug calorieBurnMin calorieBurnMax")
     .lean();
   const byId = new Map(catalogDocs.map((d) => [d._id.toString(), d]));
+  const bodyWeightKg = user.weightKg ?? null;
 
   let totalKcal = 0;
   let totalWorkouts = 0;
   for (const w of workouts) {
-    const joined = w.exercises.map((e) => {
-      const doc = byId.get(e.exerciseId.toString());
-      return { status: e.status, calorieBurnMin: doc?.calorieBurnMin ?? null, calorieBurnMax: doc?.calorieBurnMax ?? null };
-    });
-    const estimate = sumCompletedExerciseCalories(joined);
+    const joined: ExerciseCalorieInput[] = w.exercises
+      .filter((e) => !approvedOnly || e.calorieApproved)
+      .map((e) => {
+        const doc = byId.get(e.exerciseId.toString());
+        return {
+          status: e.status,
+          slug: doc?.slug ?? "",
+          calorieBurnMin: doc?.calorieBurnMin ?? null,
+          calorieBurnMax: doc?.calorieBurnMax ?? null,
+          loggedWeightKg: averageLoggedWeightKg(e.sets),
+        };
+      });
+    const estimate = sumCompletedExerciseCalories(joined, bodyWeightKg);
     if (estimate) {
       totalKcal += estimate.kcal;
       totalWorkouts += 1;
@@ -277,7 +306,9 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
 
   if (exercise.status === "complete" && !exercise.xpAwarded) {
     exercise.xpAwarded = true;
-    await queueXpAward(user._id, XP_VALUES.EXERCISE_COMPLETE, "exercise_complete", exercise.name);
+    // Kept so approvals.ts can find its way back to this exact exercise entry (see
+    // calorieApproved on ExerciseEntrySchema) once an admin approves this award.
+    exercise.xpAwardId = await queueXpAward(user._id, XP_VALUES.EXERCISE_COMPLETE, "exercise_complete", exercise.name);
     xpPending += XP_VALUES.EXERCISE_COMPLETE;
     await notifyUserAndParty(
       { id: user._id.toString(), name: user.name },
@@ -361,8 +392,9 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
   revalidatePath("/dashboard");
   revalidatePath("/quest");
   revalidatePath("/diet");
+  revalidatePath("/calories");
 
-  const caloriesBurnedToday = await calorieEstimateForWorkout(workout);
+  const caloriesBurnedToday = await calorieEstimateForWorkout(workout, user.weightKg ?? null);
 
   return {
     workout: toDailyWorkoutDTO(workout.toObject()),
@@ -410,6 +442,12 @@ export interface ExerciseDetailDTO {
   previousSets: { setNumber: number; weight: number | null; reps: number | null }[];
   previousDate: string | null;
   caloriesBurnedToday: CatalogCalorieEstimate | null;
+  /** This exercise's catalog slug — lets the client look itself up in the dynamic
+   * weight/bodyweight calorie table (lib/dynamic-calorie-table.ts) for a live estimate as the
+   * weight input changes, before the set is even saved. Null if the catalog doc is missing. */
+  exerciseSlug: string | null;
+  /** For that same live client-side estimate — null if the user has no bodyweight on file. */
+  bodyWeightKg: number | null;
 }
 
 export async function getExerciseDetail(
@@ -448,7 +486,16 @@ export async function getExerciseDetail(
   const dto = toDailyWorkoutDTO(workout);
   const exercise = dto.exercises.find((e) => e.id === exerciseEntryId)!;
 
-  const caloriesBurnedToday = await calorieEstimateForWorkout(workout);
+  const caloriesBurnedToday = await calorieEstimateForWorkout(workout, user.weightKg ?? null);
+  const catalogDoc = await Exercise.findById(rawEntry.exerciseId).select("slug").lean();
 
-  return { workout: dto, exercise, previousSets, previousDate, caloriesBurnedToday };
+  return {
+    workout: dto,
+    exercise,
+    previousSets,
+    previousDate,
+    caloriesBurnedToday,
+    exerciseSlug: catalogDoc?.slug ?? null,
+    bodyWeightKg: user.weightKg ?? null,
+  };
 }
