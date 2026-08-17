@@ -13,6 +13,13 @@
 // the result always says which one it is so the UI never presents an
 // estimate as if it were a measured fact.
 
+import {
+  dynamicCalorieRangeFor,
+  assistLevelCalorieRangeFor,
+  bodyWeightOnlyCalorieRangeFor,
+  type AssistLevel,
+} from "@/lib/dynamic-calorie-table";
+
 export const MET_VALUES = {
   RESISTANCE_TRAINING: 5.0,
   LIGHT_ACTIVITY: 4.0,
@@ -68,40 +75,110 @@ export interface CatalogCalorieEstimate {
   maxKcal: number;
 }
 
+export interface ExerciseCalorieInput {
+  status: string;
+  slug: string;
+  /** Flat per-exercise range from the catalog (Exercise.calorieBurnMin/Max) — the fallback
+   * used whenever the dynamic weight/bodyweight table (lib/dynamic-calorie-table.ts) has no
+   * entry for this exercise, or the inputs it needs aren't available. */
+  calorieBurnMin: number | null;
+  calorieBurnMax: number | null;
+  /** Representative weight actually logged on this exercise's completed sets — see
+   * averageLoggedWeightKg(). Feeds the dynamic table lookup below. */
+  loggedWeightKg: number | null;
+  /** Representative assist level from this exercise's completed sets — see
+   * modeAssistLevel(). Feeds the assist-level table (Assisted Pull-Ups) instead of the above. */
+  assistLevel: AssistLevel | null;
+}
+
+/** Representative weight for a completed exercise's calorie lookup — the average across
+ * completed sets that logged a weight (a set logged with no weight, e.g. bodyweight work,
+ * is skipped rather than counted as 0). Null if nothing usable was logged. */
+export function averageLoggedWeightKg(sets: { completed: boolean; weight?: number | null }[]): number | null {
+  const weights = sets.filter((s) => s.completed && s.weight != null).map((s) => s.weight as number);
+  if (weights.length === 0) return null;
+  return weights.reduce((sum, w) => sum + w, 0) / weights.length;
+}
+
+/** Representative assist level for a completed exercise's calorie lookup — the most common
+ * level across completed sets (a user occasionally picking a different level on one set
+ * shouldn't sway the whole exercise's estimate). Ties break toward the harder level, since
+ * that's the more conservative (lower) calorie estimate to default to. Null if none logged. */
+export function modeAssistLevel(sets: { completed: boolean; assistLevel?: AssistLevel | null }[]): AssistLevel | null {
+  const levels = sets.filter((s) => s.completed && s.assistLevel != null).map((s) => s.assistLevel as AssistLevel);
+  if (levels.length === 0) return null;
+
+  const counts = new Map<AssistLevel, number>();
+  for (const level of levels) counts.set(level, (counts.get(level) ?? 0) + 1);
+
+  const hardestFirst: AssistLevel[] = ["bodyweight", "light_assist", "heavy_assist"];
+  let best: AssistLevel = levels[0];
+  let bestCount = 0;
+  for (const level of hardestFirst) {
+    const count = counts.get(level) ?? 0;
+    if (count > bestCount) {
+      best = level;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+function exerciseCalorieRange(exercise: ExerciseCalorieInput, bodyWeightKg: number | null): { min: number; max: number } | null {
+  const dynamic =
+    dynamicCalorieRangeFor(exercise.slug, exercise.loggedWeightKg, bodyWeightKg) ??
+    assistLevelCalorieRangeFor(exercise.slug, exercise.assistLevel, bodyWeightKg) ??
+    bodyWeightOnlyCalorieRangeFor(exercise.slug, bodyWeightKg);
+  if (dynamic) return dynamic;
+  if (exercise.calorieBurnMin != null && exercise.calorieBurnMax != null) {
+    return { min: exercise.calorieBurnMin, max: exercise.calorieBurnMax };
+  }
+  return null;
+}
+
 /**
- * Sums the fixed per-exercise calorie range (Exercise.calorieBurnMin/Max — a flat lookup
- * table, not a formula) across every exercise marked "complete" in a workout. This is what
- * actually drives "today's burn" on the dashboard/quest pages: it only counts what you've
- * actually finished, and grows one exercise at a time as you complete each one — never a
- * weight- or duration-based guess. Exercises with no catalog figure yet are skipped, not
- * treated as zero. Returns null if nothing completed (yet) has a figure to add up.
+ * Sums each exercise's calorie range across every exercise marked "complete" in a workout.
+ * For exercises the dynamic weight/bodyweight table covers (lib/dynamic-calorie-table.ts),
+ * and where a weight was actually logged and the user has a bodyweight on file, that table's
+ * range wins; everything else falls back to the flat catalog range (Exercise.calorieBurnMin/
+ * Max), same as before. This is what actually drives "today's burn" on the dashboard/quest
+ * pages: it only counts what you've actually finished, and grows one exercise at a time as
+ * you complete each one. Exercises with no figure from either source are skipped, not treated
+ * as zero. Returns null if nothing completed (yet) has a figure to add up.
  */
 function sumExerciseCalories(
-  exercises: { calorieBurnMin: number | null; calorieBurnMax: number | null }[]
+  exercises: ExerciseCalorieInput[],
+  bodyWeightKg: number | null
 ): CatalogCalorieEstimate | null {
-  const withData = exercises.filter((e) => e.calorieBurnMin != null && e.calorieBurnMax != null);
-  if (withData.length === 0) return null;
+  const ranges = exercises
+    .map((e) => exerciseCalorieRange(e, bodyWeightKg))
+    .filter((r): r is { min: number; max: number } => r != null);
+  if (ranges.length === 0) return null;
 
-  const minKcal = withData.reduce((sum, e) => sum + (e.calorieBurnMin as number), 0);
-  const maxKcal = withData.reduce((sum, e) => sum + (e.calorieBurnMax as number), 0);
+  const minKcal = ranges.reduce((sum, r) => sum + r.min, 0);
+  const maxKcal = ranges.reduce((sum, r) => sum + r.max, 0);
   return { kcal: Math.round((minKcal + maxKcal) / 2), minKcal, maxKcal };
 }
 
 export function sumCompletedExerciseCalories(
-  exercises: { status: string; calorieBurnMin: number | null; calorieBurnMax: number | null }[]
+  exercises: ExerciseCalorieInput[],
+  bodyWeightKg: number | null = null
 ): CatalogCalorieEstimate | null {
-  return sumExerciseCalories(exercises.filter((e) => e.status === "complete"));
+  return sumExerciseCalories(exercises.filter((e) => e.status === "complete"), bodyWeightKg);
 }
 
 /**
- * Sums the same fixed per-exercise ranges across *every* exercise scheduled today, regardless
- * of completion — i.e. "if I finish today's whole routine, this is the total." Paired with
- * sumCompletedExerciseCalories() to drive a burned-so-far-vs-today's-target gauge.
+ * Sums the same ranges across *every* exercise scheduled today, regardless of completion —
+ * i.e. "if I finish today's whole routine, this is the total." Paired with
+ * sumCompletedExerciseCalories() to drive a burned-so-far-vs-today's-target gauge. In practice
+ * this stays on the flat catalog figure even for dynamic-table exercises, since nothing not
+ * yet completed has a logged weight to look up.
  */
 export function sumAllExerciseCalories(
-  exercises: { calorieBurnMin: number | null; calorieBurnMax: number | null }[]
+  exercises: ExerciseCalorieInput[],
+  bodyWeightKg: number | null = null
 ): CatalogCalorieEstimate | null {
-  return sumExerciseCalories(exercises);
+  return sumExerciseCalories(exercises, bodyWeightKg);
 }
 
 /**

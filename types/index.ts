@@ -30,10 +30,14 @@ export type NotificationType =
   | "party_extra_workout"
   | "nudge";
 
+export type AssistLevel = "heavy_assist" | "light_assist" | "bodyweight";
+
 export interface SetDTO {
   id: string;
   setNumber: number;
   weight: number | null;
+  /** Assisted/Bodyweight Pull-Ups only — see SetSchema.assistLevel. Null for every other exercise. */
+  assistLevel: AssistLevel | null;
   reps: number | null;
   completed: boolean;
   completedAt: string | null;

@@ -6,6 +6,7 @@ import { getWorkoutDetail } from "@/actions/history";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { formatDisplayDate, formatDuration } from "@/lib/dates";
+import { usesWeightTracking } from "@/lib/weight-guidance";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Quest Detail — LevelUp" };
@@ -75,7 +76,9 @@ export default async function QuestLogDetailPage({
                       s.completed ? "border-success/40 text-success" : "border-border"
                     )}
                   >
-                    {s.completed ? `${s.weight ?? 0} KG × ${s.reps ?? 0}` : "—"}
+                    {s.completed
+                      ? `${usesWeightTracking(ex) ? `${s.weight ?? 0} KG × ` : ""}${s.reps ?? 0}`
+                      : "—"}
                   </span>
                 ))}
               </div>

@@ -190,12 +190,16 @@ export async function ensureSeeded(): Promise<void> {
     )
   );
 
-  // Disabled for now — keeping only "Sleeper Build — Athletic" (a separate, admin-managed
-  // template) as the active built-in. This used to auto-create/sync a second "Sleeper Build"
+  // Re-enabled: "Sleeper Build — Athletic" (the admin-managed template this was disabled in
+  // favor of) was never actually recreated after the cleanup described below, leaving zero
+  // WorkoutTemplate documents in the database for anyone to activate. This seeds the one
+  // lib/dynamic-calorie-table.ts was built against, so its slugs are guaranteed to match.
+  //
+  // Previously disabled because this used to auto-create/sync a second "Sleeper Build"
   // template on every request; that document was deleted from the DB and its users repointed
-  // to sleeper-build-athletic. Re-enable by flipping this flag back to true — the code below
-  // is otherwise untouched and will re-sync it exactly as before.
-  const SEED_BUILT_IN_SLEEPER_BUILD = false;
+  // to sleeper-build-athletic. If "Sleeper Build — Athletic" gets recreated later, flip this
+  // back to false — the code below is otherwise untouched and will re-sync it exactly as before.
+  const SEED_BUILT_IN_SLEEPER_BUILD = true;
   if (SEED_BUILT_IN_SLEEPER_BUILD) {
     const schedule = SLEEPER_BUILD_SCHEDULE.map((day) => ({
       dayOfWeek: day.dayOfWeek,
