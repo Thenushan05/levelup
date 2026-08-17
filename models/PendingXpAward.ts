@@ -6,7 +6,14 @@ const PendingXpAwardSchema = new Schema(
     amount: { type: Number, required: true, min: 1 },
     reason: {
       type: String,
-      enum: ["check_in", "exercise_complete", "quest_complete", "weekly_quest_complete", "achievement_unlocked"],
+      enum: [
+        "check_in",
+        "exercise_complete",
+        "quest_complete",
+        "weekly_quest_complete",
+        "achievement_unlocked",
+        "extra_workout",
+      ],
       required: true,
     },
     // Human-readable context, e.g. "Bench Press", "Upper Body A", "Gym Check-In", achievement title.

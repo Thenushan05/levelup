@@ -9,10 +9,13 @@ import type { SetDTO } from "@/types";
 export function SetRow({
   set,
   unit,
+  showWeight = true,
   onSave,
 }: {
   set: SetDTO;
   unit: "reps" | "seconds";
+  /** Cardio and core movements carry no load — hide the KG field entirely rather than forcing a 0. */
+  showWeight?: boolean;
   onSave: (setNumber: number, weight: number | null, reps: number | null, completed: boolean) => Promise<void>;
 }) {
   const [weight, setWeight] = useState(set.weight != null ? String(set.weight) : "");
@@ -20,7 +23,7 @@ export function SetRow({
   const [saving, setSaving] = useState(false);
 
   async function handleComplete() {
-    const w = weight === "" ? 0 : Number(weight);
+    const w = !showWeight || weight === "" ? null : Number(weight);
     const r = reps === "" ? 0 : Number(reps);
     setSaving(true);
     try {
@@ -52,7 +55,8 @@ export function SetRow({
         </span>
         <span className="heading-system text-sm">SET {set.setNumber}</span>
         <span className="ml-auto text-sm text-muted-foreground">
-          {set.weight ?? 0} KG × {set.reps ?? 0} {unit === "seconds" ? "SEC" : ""}
+          {showWeight && set.weight != null && set.weight > 0 ? `${set.weight} KG × ` : ""}
+          {set.reps ?? 0} {unit === "seconds" ? "SEC" : "REPS"}
         </span>
       </button>
     );
@@ -65,17 +69,19 @@ export function SetRow({
       </span>
       <span className="heading-system text-sm">SET {set.setNumber}</span>
       <div className="ml-auto flex items-center gap-2">
-        <div className="flex items-center gap-1">
-          <Input
-            type="number"
-            inputMode="decimal"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            className="h-8 w-16 text-center"
-            placeholder="0"
-          />
-          <span className="text-xs text-muted-foreground">KG</span>
-        </div>
+        {showWeight && (
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              inputMode="decimal"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              className="h-8 w-16 text-center"
+              placeholder="0"
+            />
+            <span className="text-xs text-muted-foreground">KG</span>
+          </div>
+        )}
         <div className="flex items-center gap-1">
           <Input
             type="number"

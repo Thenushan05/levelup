@@ -26,6 +26,8 @@ export type NotificationType =
   | "party_level_up"
   | "party_achievement"
   | "party_objective_complete"
+  | "extra_workout"
+  | "party_extra_workout"
   | "nudge";
 
 export interface SetDTO {
@@ -70,6 +72,28 @@ export interface DailyWorkoutDTO {
   completedAt: string | null;
   durationMinutes: number | null;
   exercises: ExerciseEntryDTO[];
+}
+
+export type ExtraWorkoutCategory = "weight_training" | "cardio" | "abs";
+
+export type CardioIntensity = "light" | "moderate" | "intense";
+
+export interface ExtraWorkoutDTO {
+  id: string;
+  date: string;
+  category: ExtraWorkoutCategory;
+  name: string;
+  sets: number | null;
+  reps: number | null;
+  weightKg: number | null;
+  durationMin: number | null;
+  durationSec: number | null;
+  intensity: CardioIntensity | null;
+  notes: string;
+  xpAwarded: number;
+  xpBeforeCap: number;
+  parWeightKg: number | null;
+  createdAt: string;
 }
 
 export interface LevelUpResult {

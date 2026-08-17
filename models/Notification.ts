@@ -39,6 +39,8 @@ const NotificationSchema = new Schema(
         "party_level_up",
         "party_achievement",
         "party_objective_complete",
+        "extra_workout",
+        "party_extra_workout",
         "nudge",
       ],
       required: true,

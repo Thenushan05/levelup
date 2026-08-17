@@ -9,7 +9,8 @@ export type XpReason =
   | "exercise_complete"
   | "quest_complete"
   | "weekly_quest_complete"
-  | "achievement_unlocked";
+  | "achievement_unlocked"
+  | "extra_workout";
 
 /**
  * The entire leveling curve lives here so it's configurable in one place.
@@ -32,8 +33,12 @@ export function requiredXpForLevel(level: number): number {
 /**
  * Fixed, server-only XP grants. The client never supplies an XP amount —
  * every award below is chosen by server code after it has verified the
- * underlying condition itself (see actions/*.ts). No path exists for bonus
- * XP tied to volume, duration, frequency, or skipping rest.
+ * underlying condition itself (see actions/*.ts).
+ *
+ * Extra ("overtime") workouts are the one variable award: they scale with
+ * volume relative to the member's own bodyweight/height guidance (see
+ * lib/extra-workout-xp.ts). DAILY_EXTRA_XP_CAP keeps a day of extras below
+ * what the actual routine is worth, so grinding still can't outpace it.
  */
 export const XP_VALUES = {
   GYM_CHECK_IN: 10,
@@ -42,6 +47,10 @@ export const XP_VALUES = {
   WEEKLY_QUEST_COMPLETE: 100,
   SEVEN_DAY_STREAK: 100,
 } as const;
+
+/** Ceiling on total XP from extra workouts in a single day. A full routine day is
+ * WORKOUT_COMPLETE (50) plus ~30 from its exercises, so extras stay below it. */
+export const DAILY_EXTRA_XP_CAP = 50;
 
 interface XpMutable {
   level: number;
@@ -113,8 +122,9 @@ export async function queueXpAward(
   amount: number,
   reason: XpReason,
   title: string
-): Promise<void> {
-  if (amount <= 0) return;
+): Promise<Types.ObjectId | null> {
+  if (amount <= 0) return null;
   await connectToDatabase();
-  await PendingXpAward.create({ userId, amount, reason, title });
+  const award = await PendingXpAward.create({ userId, amount, reason, title });
+  return award._id;
 }
