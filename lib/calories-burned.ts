@@ -13,7 +13,12 @@
 // the result always says which one it is so the UI never presents an
 // estimate as if it were a measured fact.
 
-import { dynamicCalorieRangeFor } from "@/lib/dynamic-calorie-table";
+import {
+  dynamicCalorieRangeFor,
+  assistLevelCalorieRangeFor,
+  bodyWeightOnlyCalorieRangeFor,
+  type AssistLevel,
+} from "@/lib/dynamic-calorie-table";
 
 export const MET_VALUES = {
   RESISTANCE_TRAINING: 5.0,
@@ -81,6 +86,9 @@ export interface ExerciseCalorieInput {
   /** Representative weight actually logged on this exercise's completed sets — see
    * averageLoggedWeightKg(). Feeds the dynamic table lookup below. */
   loggedWeightKg: number | null;
+  /** Representative assist level from this exercise's completed sets — see
+   * modeAssistLevel(). Feeds the assist-level table (Assisted Pull-Ups) instead of the above. */
+  assistLevel: AssistLevel | null;
 }
 
 /** Representative weight for a completed exercise's calorie lookup — the average across
@@ -92,8 +100,35 @@ export function averageLoggedWeightKg(sets: { completed: boolean; weight?: numbe
   return weights.reduce((sum, w) => sum + w, 0) / weights.length;
 }
 
+/** Representative assist level for a completed exercise's calorie lookup — the most common
+ * level across completed sets (a user occasionally picking a different level on one set
+ * shouldn't sway the whole exercise's estimate). Ties break toward the harder level, since
+ * that's the more conservative (lower) calorie estimate to default to. Null if none logged. */
+export function modeAssistLevel(sets: { completed: boolean; assistLevel?: AssistLevel | null }[]): AssistLevel | null {
+  const levels = sets.filter((s) => s.completed && s.assistLevel != null).map((s) => s.assistLevel as AssistLevel);
+  if (levels.length === 0) return null;
+
+  const counts = new Map<AssistLevel, number>();
+  for (const level of levels) counts.set(level, (counts.get(level) ?? 0) + 1);
+
+  const hardestFirst: AssistLevel[] = ["bodyweight", "light_assist", "heavy_assist"];
+  let best: AssistLevel = levels[0];
+  let bestCount = 0;
+  for (const level of hardestFirst) {
+    const count = counts.get(level) ?? 0;
+    if (count > bestCount) {
+      best = level;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
 function exerciseCalorieRange(exercise: ExerciseCalorieInput, bodyWeightKg: number | null): { min: number; max: number } | null {
-  const dynamic = dynamicCalorieRangeFor(exercise.slug, exercise.loggedWeightKg, bodyWeightKg);
+  const dynamic =
+    dynamicCalorieRangeFor(exercise.slug, exercise.loggedWeightKg, bodyWeightKg) ??
+    assistLevelCalorieRangeFor(exercise.slug, exercise.assistLevel, bodyWeightKg) ??
+    bodyWeightOnlyCalorieRangeFor(exercise.slug, bodyWeightKg);
   if (dynamic) return dynamic;
   if (exercise.calorieBurnMin != null && exercise.calorieBurnMax != null) {
     return { min: exercise.calorieBurnMin, max: exercise.calorieBurnMax };

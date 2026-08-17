@@ -17,9 +17,11 @@ import {
   sumCompletedExerciseCalories,
   sumAllExerciseCalories,
   averageLoggedWeightKg,
+  modeAssistLevel,
   type CatalogCalorieEstimate,
   type ExerciseCalorieInput,
 } from "@/lib/calories-burned";
+import type { AssistLevel } from "@/lib/dynamic-calorie-table";
 import type { AchievementUnlockedDTO, DailyWorkoutDTO } from "@/types";
 
 export interface QuestActionResult {
@@ -41,7 +43,11 @@ export interface QuestActionResult {
  * action below that reports on "today's burn" so there's one place doing it.
  */
 async function joinExerciseCalories(
-  exercises: { exerciseId: Types.ObjectId; status: string; sets: { completed: boolean; weight?: number | null }[] }[]
+  exercises: {
+    exerciseId: Types.ObjectId;
+    status: string;
+    sets: { completed: boolean; weight?: number | null; assistLevel?: AssistLevel | null }[];
+  }[]
 ): Promise<ExerciseCalorieInput[]> {
   const catalogDocs = await Exercise.find({ _id: { $in: exercises.map((e) => e.exerciseId) } })
     .select("slug calorieBurnMin calorieBurnMax")
@@ -56,6 +62,7 @@ async function joinExerciseCalories(
       calorieBurnMin: doc?.calorieBurnMin ?? null,
       calorieBurnMax: doc?.calorieBurnMax ?? null,
       loggedWeightKg: averageLoggedWeightKg(e.sets),
+      assistLevel: modeAssistLevel(e.sets),
     };
   });
 }
@@ -63,7 +70,11 @@ async function joinExerciseCalories(
 async function calorieEstimateForWorkout(
   workout: {
     type: "workout" | "rest" | "optional";
-    exercises: { exerciseId: Types.ObjectId; status: string; sets: { completed: boolean; weight?: number | null }[] }[];
+    exercises: {
+      exerciseId: Types.ObjectId;
+      status: string;
+      sets: { completed: boolean; weight?: number | null; assistLevel?: AssistLevel | null }[];
+    }[];
   },
   bodyWeightKg: number | null
 ): Promise<CatalogCalorieEstimate | null> {
@@ -140,6 +151,7 @@ export async function getTotalCalorieBurn(approvedOnly = false): Promise<TotalCa
           calorieBurnMin: doc?.calorieBurnMin ?? null,
           calorieBurnMax: doc?.calorieBurnMax ?? null,
           loggedWeightKg: averageLoggedWeightKg(e.sets),
+          assistLevel: modeAssistLevel(e.sets),
         };
       });
     const estimate = sumCompletedExerciseCalories(joined, bodyWeightKg);
@@ -280,13 +292,21 @@ export async function updateSet(input: UpdateSetInput): Promise<QuestActionResul
 
   let set = exercise.sets.find((s) => s.setNumber === parsed.setNumber);
   if (!set) {
-    exercise.sets.push({ setNumber: parsed.setNumber, weight: null, reps: null, completed: false, completedAt: null });
+    exercise.sets.push({
+      setNumber: parsed.setNumber,
+      weight: null,
+      assistLevel: null,
+      reps: null,
+      completed: false,
+      completedAt: null,
+    });
     set = exercise.sets[exercise.sets.length - 1];
   }
 
   const now = new Date();
 
   set.weight = parsed.weight;
+  set.assistLevel = parsed.assistLevel;
   set.reps = parsed.reps;
   if (parsed.completed && !set.completed) {
     set.completed = true;
@@ -439,7 +459,7 @@ export async function completeRecoveryDay(dailyWorkoutId: string): Promise<Daily
 export interface ExerciseDetailDTO {
   workout: DailyWorkoutDTO;
   exercise: DailyWorkoutDTO["exercises"][number];
-  previousSets: { setNumber: number; weight: number | null; reps: number | null }[];
+  previousSets: { setNumber: number; weight: number | null; assistLevel: AssistLevel | null; reps: number | null }[];
   previousDate: string | null;
   caloriesBurnedToday: CatalogCalorieEstimate | null;
   /** This exercise's catalog slug — lets the client look itself up in the dynamic
@@ -469,7 +489,7 @@ export async function getExerciseDetail(
     .sort({ date: -1 })
     .lean();
 
-  let previousSets: { setNumber: number; weight: number | null; reps: number | null }[] = [];
+  let previousSets: { setNumber: number; weight: number | null; assistLevel: AssistLevel | null; reps: number | null }[] = [];
   let previousDate: string | null = null;
   if (prevWorkout) {
     const prevEntry = prevWorkout.exercises.find(
@@ -478,7 +498,12 @@ export async function getExerciseDetail(
     if (prevEntry) {
       previousSets = prevEntry.sets
         .filter((s) => s.completed)
-        .map((s) => ({ setNumber: s.setNumber, weight: s.weight ?? null, reps: s.reps ?? null }));
+        .map((s) => ({
+          setNumber: s.setNumber,
+          weight: s.weight ?? null,
+          assistLevel: (s.assistLevel as AssistLevel | null) ?? null,
+          reps: s.reps ?? null,
+        }));
       previousDate = prevWorkout.date;
     }
   }

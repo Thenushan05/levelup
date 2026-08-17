@@ -5,6 +5,8 @@ export const updateSetSchema = z.object({
   exerciseEntryId: z.string().min(1),
   setNumber: z.number().int().min(1).max(20),
   weight: z.number().min(0).max(500).nullable(),
+  // Assisted/Bodyweight Pull-Ups only — see SetSchema.assistLevel. Null for every other exercise.
+  assistLevel: z.enum(["heavy_assist", "light_assist", "bodyweight"]).nullable(),
   reps: z.number().int().min(0).max(999).nullable(),
   completed: z.boolean(),
 });

@@ -14,7 +14,9 @@ import { showAchievementToast, showErrorToast, showSystemToast, showXpPendingToa
 import { enqueueAction, looksLikeNetworkFailure } from "@/lib/offline-queue";
 import { formatDisplayDate } from "@/lib/dates";
 import { usesWeightTracking } from "@/lib/weight-guidance";
+import { assistLevelLabel } from "@/lib/dynamic-calorie-table";
 import type { CatalogCalorieEstimate } from "@/lib/calories-burned";
+import type { AssistLevel } from "@/types";
 
 export function ExerciseDetailClient({
   dailyWorkoutId,
@@ -31,27 +33,34 @@ export function ExerciseDetailClient({
     initialDetail.caloriesBurnedToday
   );
 
-  function applyOptimisticSet(setNumber: number, weight: number | null, reps: number | null, completed: boolean) {
+  function applyOptimisticSet(
+    setNumber: number,
+    weight: number | null,
+    assistLevel: AssistLevel | null,
+    reps: number | null,
+    completed: boolean
+  ) {
     setExercise((prev) => ({
       ...prev,
-      sets: prev.sets.map((s) => (s.setNumber === setNumber ? { ...s, weight, reps, completed } : s)),
+      sets: prev.sets.map((s) => (s.setNumber === setNumber ? { ...s, weight, assistLevel, reps, completed } : s)),
     }));
   }
 
   async function handleSaveSet(
     setNumber: number,
     weight: number | null,
+    assistLevel: AssistLevel | null,
     reps: number | null,
     completed: boolean
   ) {
-    const input = { dailyWorkoutId, exerciseEntryId: exercise.id, setNumber, weight, reps, completed };
+    const input = { dailyWorkoutId, exerciseEntryId: exercise.id, setNumber, weight, assistLevel, reps, completed };
 
     // Offline (or bad enough gym signal that the request can't complete): log
     // the set locally and queue it, rather than losing it or blocking on a
     // request that may never resolve. XP/achievements/completion feedback
     // only arrive once this actually syncs — see OfflineSyncManager.
     async function queueOffline(reason: string) {
-      applyOptimisticSet(setNumber, weight, reps, completed);
+      applyOptimisticSet(setNumber, weight, assistLevel, reps, completed);
       await enqueueAction({ kind: "updateSet", payload: input, label: exercise.name });
       showSystemToast("Set queued", reason);
     }
@@ -140,6 +149,7 @@ export function ExerciseDetailClient({
                 <span>SET {s.setNumber}</span>
                 <span>
                   {usesWeight && s.weight ? `${s.weight} KG × ` : ""}
+                  {s.assistLevel ? `${assistLevelLabel(s.assistLevel)} × ` : ""}
                   {s.reps ?? 0} {unit === "seconds" ? "SEC" : "REPS"}
                 </span>
               </div>

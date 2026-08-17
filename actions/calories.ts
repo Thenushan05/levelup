@@ -7,12 +7,18 @@ import { requireUserDoc } from "@/lib/session";
 import { todayKey } from "@/lib/dates";
 import {
   averageLoggedWeightKg,
+  modeAssistLevel,
   sumCompletedExerciseCalories,
   sumAllExerciseCalories,
   type ExerciseCalorieInput,
   type CatalogCalorieEstimate,
 } from "@/lib/calories-burned";
-import { dynamicCalorieRangeFor } from "@/lib/dynamic-calorie-table";
+import {
+  dynamicCalorieRangeFor,
+  assistLevelCalorieRangeFor,
+  bodyWeightOnlyCalorieRangeFor,
+  type AssistLevel,
+} from "@/lib/dynamic-calorie-table";
 import { getTotalCalorieBurn, type TotalCalorieBurnDTO } from "@/actions/workout";
 
 const HISTORY_LIMIT = 7;
@@ -24,6 +30,9 @@ export interface CalorieExerciseRowDTO {
   /** Average weight logged on this exercise's completed sets — null before it's done, or if
    * it's a bodyweight movement that never logs one. */
   loggedWeightKg: number | null;
+  /** Assist level selected on this exercise's completed sets (Assisted Pull-Ups only) — null
+   * for every other exercise. */
+  assistLevel: AssistLevel | null;
   /** Which figure minKcal/maxKcal actually came from. "unavailable" only if neither the
    * dynamic table nor the flat catalog has a number for this exercise. */
   source: "dynamic" | "catalog" | "unavailable";
@@ -72,7 +81,7 @@ interface LeanExerciseEntry {
   targetSets: number;
   status: string;
   calorieApproved?: boolean;
-  sets: { completed: boolean; weight?: number | null }[];
+  sets: { completed: boolean; weight?: number | null; assistLevel?: AssistLevel | null }[];
 }
 
 function subtract(total: CatalogCalorieEstimate | null, minus: CatalogCalorieEstimate | null): CatalogCalorieEstimate | null {
@@ -126,6 +135,7 @@ export async function getCalorieTrackingData(): Promise<CalorieTrackingDTO> {
       calorieBurnMin: doc?.calorieBurnMin ?? null,
       calorieBurnMax: doc?.calorieBurnMax ?? null,
       loggedWeightKg: averageLoggedWeightKg(e.sets),
+      assistLevel: modeAssistLevel(e.sets),
     };
   }
 
@@ -144,7 +154,10 @@ export async function getCalorieTrackingData(): Promise<CalorieTrackingDTO> {
 
     const exercises: CalorieExerciseRowDTO[] = todayWorkout.exercises.map((e, i) => {
       const j = joined[i];
-      const dynamic = dynamicCalorieRangeFor(j.slug, j.loggedWeightKg, bodyWeightKg);
+      const dynamic =
+        dynamicCalorieRangeFor(j.slug, j.loggedWeightKg, bodyWeightKg) ??
+        assistLevelCalorieRangeFor(j.slug, j.assistLevel, bodyWeightKg) ??
+        bodyWeightOnlyCalorieRangeFor(j.slug, bodyWeightKg);
       const usesCatalog = !dynamic && j.calorieBurnMin != null && j.calorieBurnMax != null;
       const minKcal = dynamic?.min ?? (usesCatalog ? j.calorieBurnMin : null);
       const maxKcal = dynamic?.max ?? (usesCatalog ? j.calorieBurnMax : null);
@@ -154,6 +167,7 @@ export async function getCalorieTrackingData(): Promise<CalorieTrackingDTO> {
         status: e.status,
         targetSets: e.targetSets,
         loggedWeightKg: j.loggedWeightKg,
+        assistLevel: j.assistLevel,
         source: dynamic ? "dynamic" : usesCatalog ? "catalog" : "unavailable",
         weightTierLabel: dynamic?.weightTierLabel ?? null,
         bodyWeightBandLabel: dynamic?.bodyWeightBandLabel ?? null,

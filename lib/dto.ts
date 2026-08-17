@@ -3,7 +3,7 @@ import { durationMinutes } from "@/lib/dates";
 import type { UserDoc } from "@/models/User";
 import type { DailyWorkoutDocType } from "@/models/DailyWorkout";
 import type { HydratedDocument } from "mongoose";
-import type { DailyWorkoutDTO, ExerciseEntryDTO, PlayerSummaryDTO, SetDTO } from "@/types";
+import type { AssistLevel, DailyWorkoutDTO, ExerciseEntryDTO, PlayerSummaryDTO, SetDTO } from "@/types";
 
 export function toPlayerSummary(user: HydratedDocument<UserDoc>): PlayerSummaryDTO {
   return {
@@ -30,6 +30,7 @@ export function toDailyWorkoutDTO(doc: LeanDailyWorkout): DailyWorkoutDTO {
       id: (s as unknown as { _id: { toString(): string } })._id.toString(),
       setNumber: s.setNumber,
       weight: s.weight ?? null,
+      assistLevel: (s.assistLevel as AssistLevel | null) ?? null,
       reps: s.reps ?? null,
       completed: s.completed,
       completedAt: s.completedAt ? new Date(s.completedAt).toISOString() : null,

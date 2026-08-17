@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Flame, Info, CheckCircle2, Clock, Circle, Target, Dumbbell, Trophy } from "lucide-react";
 import { getCalorieTrackingData, type CalorieExerciseRowDTO } from "@/actions/calories";
+import { assistLevelLabel } from "@/lib/dynamic-calorie-table";
 import type { CatalogCalorieEstimate } from "@/lib/calories-burned";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
@@ -32,8 +33,9 @@ export default async function CaloriesPage() {
         </div>
         <SystemHeading className="mt-1">Burn Readout</SystemHeading>
         <p className="mt-1 text-sm text-muted-foreground">
-          Exercises with a weight-vs-bodyweight table (currently Monday&apos;s Push Focus day) get a
-          precise range once you log a set. Every figure here counts as <strong>Logged</strong> only
+          Exercises with a weight-vs-bodyweight table (currently Monday&apos;s Push Focus and Tuesday&apos;s
+          Pull Focus days) get a precise range once you log a set. Every figure here counts as{" "}
+          <strong>Logged</strong> only
           once an admin approves it — until then it sits as <strong>Pending</strong>.
         </p>
       </div>
@@ -183,8 +185,20 @@ function ExerciseRow({ exercise }: { exercise: CalorieExerciseRowDTO }) {
           <p className="text-sm font-medium">{exercise.name}</p>
           <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <Dumbbell className="h-3 w-3 shrink-0" />
-            {exercise.loggedWeightKg != null ? `${Math.round(exercise.loggedWeightKg * 10) / 10} kg` : "Not logged yet"}
-            {exercise.weightTierLabel && ` · ${exercise.weightTierLabel}`}
+            {(() => {
+              // Bodyweight-only exercises (Hanging Knee Raise) never log a weight at all —
+              // showing "Not logged yet" next to a redundant "· Bodyweight" tier reads oddly,
+              // so just say Bodyweight once and skip the tier suffix below for this case.
+              const isBodyWeightOnly =
+                exercise.assistLevel == null && exercise.loggedWeightKg == null && exercise.weightTierLabel === "Bodyweight";
+              if (isBodyWeightOnly) return "Bodyweight";
+              if (exercise.assistLevel) return assistLevelLabel(exercise.assistLevel);
+              if (exercise.loggedWeightKg != null) return `${Math.round(exercise.loggedWeightKg * 10) / 10} kg`;
+              return "Not logged yet";
+            })()}
+            {exercise.weightTierLabel &&
+              exercise.weightTierLabel !== "Bodyweight" &&
+              ` · ${exercise.weightTierLabel}`}
             {exercise.bodyWeightBandLabel && ` · ${exercise.bodyWeightBandLabel} bodyweight`}
           </p>
         </div>

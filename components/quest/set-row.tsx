@@ -4,8 +4,18 @@ import { useState } from "react";
 import { Check, Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { dynamicCalorieRangeFor, hasDynamicCalorieData } from "@/lib/dynamic-calorie-table";
-import type { SetDTO } from "@/types";
+import {
+  dynamicCalorieRangeFor,
+  hasDynamicCalorieData,
+  assistLevelCalorieRangeFor,
+  hasAssistLevelData,
+  assistLevelLabel,
+  ASSIST_LEVEL_OPTIONS,
+  bodyWeightOnlyCalorieRangeFor,
+  hasBodyWeightOnlyCalorieData,
+} from "@/lib/dynamic-calorie-table";
+import type { SetDTO, AssistLevel } from "@/types";
+import { cn } from "@/lib/utils";
 
 export function SetRow({
   set,
@@ -19,28 +29,47 @@ export function SetRow({
   unit: "reps" | "seconds";
   /** Cardio and core movements carry no load — hide the KG field entirely rather than forcing a 0. */
   showWeight?: boolean;
-  onSave: (setNumber: number, weight: number | null, reps: number | null, completed: boolean) => Promise<void>;
+  onSave: (
+    setNumber: number,
+    weight: number | null,
+    assistLevel: AssistLevel | null,
+    reps: number | null,
+    completed: boolean
+  ) => Promise<void>;
   /** This exercise's catalog slug — when it's covered by the dynamic weight/bodyweight
    * calorie table (lib/dynamic-calorie-table.ts), the weight field shows a live estimate as
-   * it's typed, before the set is even saved. Null (or an uncovered exercise) shows nothing. */
+   * it's typed, before the set is even saved. Null (or an uncovered exercise) shows nothing.
+   * Assisted/Bodyweight Pull-Ups is covered by a separate assist-level table instead — see
+   * hasAssistLevelData() below, which swaps the KG input for a 3-way selector entirely. */
   exerciseSlug?: string | null;
   bodyWeightKg?: number | null;
 }) {
   const [weight, setWeight] = useState(set.weight != null ? String(set.weight) : "");
+  const [assistLevel, setAssistLevel] = useState<AssistLevel | null>(set.assistLevel ?? null);
   const [reps, setReps] = useState(set.reps != null ? String(set.reps) : "");
   const [saving, setSaving] = useState(false);
 
-  const liveEstimate =
-    showWeight && exerciseSlug ? dynamicCalorieRangeFor(exerciseSlug, weight === "" ? null : Number(weight), bodyWeightKg) : null;
-  const needsBodyWeightForEstimate =
-    showWeight && weight !== "" && bodyWeightKg == null && !!exerciseSlug && hasDynamicCalorieData(exerciseSlug);
+  const showsAssistSelector = !!exerciseSlug && hasAssistLevelData(exerciseSlug);
+  const showsBodyWeightOnlyEstimate = !!exerciseSlug && hasBodyWeightOnlyCalorieData(exerciseSlug);
+  const liveEstimate = showsAssistSelector
+    ? assistLevelCalorieRangeFor(exerciseSlug, assistLevel, bodyWeightKg)
+    : showsBodyWeightOnlyEstimate
+      ? bodyWeightOnlyCalorieRangeFor(exerciseSlug, bodyWeightKg)
+      : showWeight && exerciseSlug
+        ? dynamicCalorieRangeFor(exerciseSlug, weight === "" ? null : Number(weight), bodyWeightKg)
+        : null;
+  const needsBodyWeightForEstimate = showsAssistSelector
+    ? assistLevel != null && bodyWeightKg == null
+    : showsBodyWeightOnlyEstimate
+      ? bodyWeightKg == null
+      : showWeight && weight !== "" && bodyWeightKg == null && !!exerciseSlug && hasDynamicCalorieData(exerciseSlug);
 
   async function handleComplete() {
     const w = !showWeight || weight === "" ? null : Number(weight);
     const r = reps === "" ? 0 : Number(reps);
     setSaving(true);
     try {
-      await onSave(set.setNumber, w, r, true);
+      await onSave(set.setNumber, w, assistLevel, r, true);
     } finally {
       setSaving(false);
     }
@@ -49,7 +78,7 @@ export function SetRow({
   async function handleUncheck() {
     setSaving(true);
     try {
-      await onSave(set.setNumber, set.weight, set.reps, false);
+      await onSave(set.setNumber, set.weight, set.assistLevel ?? null, set.reps, false);
     } finally {
       setSaving(false);
     }
@@ -69,6 +98,7 @@ export function SetRow({
         <span className="heading-system text-sm">SET {set.setNumber}</span>
         <span className="ml-auto text-sm text-muted-foreground">
           {showWeight && set.weight != null && set.weight > 0 ? `${set.weight} KG × ` : ""}
+          {set.assistLevel ? `${assistLevelLabel(set.assistLevel)} × ` : ""}
           {set.reps ?? 0} {unit === "seconds" ? "SEC" : "REPS"}
         </span>
       </button>
@@ -110,6 +140,23 @@ export function SetRow({
           {saving ? "..." : "DONE"}
         </Button>
       </div>
+
+      {showsAssistSelector && (
+        <div className="flex w-full flex-wrap items-center gap-1.5 pl-8">
+          {ASSIST_LEVEL_OPTIONS.map((opt) => (
+            <Button
+              key={opt.level}
+              type="button"
+              size="xs"
+              variant={assistLevel === opt.level ? "secondary" : "outline"}
+              onClick={() => setAssistLevel(opt.level)}
+              className={cn("tracking-wide", assistLevel === opt.level && "text-glow-cyan")}
+            >
+              {opt.buttonLabel}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {liveEstimate && (
         <div className="flex w-full items-center gap-1.5 pl-8 text-[11px] text-glow-cyan">

@@ -39,10 +39,12 @@ export function pickWeightGuidance(
 }
 
 /**
- * Whether an exercise entry should ask for a KG figure at all. Cardio and core work is
- * unloaded, so a weight field only produces meaningless zeroes — and pull-ups (bodyweight,
- * or assisted via a counterweight machine that offsets the user's own weight) carry no
- * user-entered load either, regardless of muscle group.
+ * Whether an exercise entry should ask for a KG figure at all. Cardio is unloaded, so a
+ * weight field there only produces meaningless zeroes — and pull-ups (bodyweight, or assisted
+ * via a counterweight machine that offsets the user's own weight) carry no user-entered load
+ * either, regardless of muscle group. Core is bodyweight *by default* (planks, twists, leg
+ * raises) but not universally — cable-loaded core movements like woodchoppers still carry
+ * real, user-set resistance, so they're excluded from that default rather than folded into it.
  */
 export function usesWeightTracking(exercise: {
   muscleGroup: string;
@@ -50,7 +52,8 @@ export function usesWeightTracking(exercise: {
   name: string;
 }): boolean {
   if (exercise.repsUnit === "seconds") return false;
-  if (exercise.muscleGroup === "Cardio" || exercise.muscleGroup === "Core") return false;
+  if (exercise.muscleGroup === "Cardio") return false;
+  if (exercise.muscleGroup === "Core" && !/woodchop/i.test(exercise.name)) return false;
   if (/pull-up/i.test(exercise.name)) return false;
   return true;
 }

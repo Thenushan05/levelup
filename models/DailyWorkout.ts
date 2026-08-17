@@ -5,6 +5,12 @@ const SetSchema = new Schema(
     setNumber: { type: Number, required: true },
     weight: { type: Number, default: null },
     reps: { type: Number, default: null },
+    // Assisted/Bodyweight Pull-Ups only — a 3-way "how much did the machine help" selector
+    // instead of a typed weight (see lib/dynamic-calorie-table.ts's ASSIST_LEVEL_CALORIE_TABLE
+    // for why: its tiers run backwards from every weighted exercise's, and this exercise has
+    // no numeric weight field in the quest UI at all — usesWeightTracking() in
+    // lib/weight-guidance.ts). Null for every other exercise.
+    assistLevel: { type: String, enum: ["heavy_assist", "light_assist", "bodyweight"], default: null },
     completed: { type: Boolean, default: false },
     completedAt: { type: Date, default: null },
   },
