@@ -91,6 +91,8 @@ export function ExerciseDetailClient({
   }
 
   const unit = exercise.repsUnit;
+  // Cardio and core work is unloaded, so asking for a KG figure only produces meaningless zeroes.
+  const usesWeight = unit !== "seconds" && exercise.muscleGroup !== "Cardio" && exercise.muscleGroup !== "Core";
   const range =
     exercise.targetRepsMin === exercise.targetRepsMax
       ? `${exercise.targetRepsMin}`
@@ -137,7 +139,8 @@ export function ExerciseDetailClient({
               <div key={s.setNumber} className="flex justify-between text-sm text-muted-foreground">
                 <span>SET {s.setNumber}</span>
                 <span>
-                  {s.weight ?? 0} KG × {s.reps ?? 0}
+                  {usesWeight && s.weight ? `${s.weight} KG × ` : ""}
+                  {s.reps ?? 0} {unit === "seconds" ? "SEC" : "REPS"}
                 </span>
               </div>
             ))}
@@ -148,7 +151,7 @@ export function ExerciseDetailClient({
       <div className="space-y-2.5">
         <SystemLabel accent>Current Attempt</SystemLabel>
         {exercise.sets.map((s) => (
-          <SetRow key={s.id} set={s} unit={unit} onSave={handleSaveSet} />
+          <SetRow key={s.id} set={s} unit={unit} showWeight={usesWeight} onSave={handleSaveSet} />
         ))}
       </div>
 

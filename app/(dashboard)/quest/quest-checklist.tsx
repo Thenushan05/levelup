@@ -8,21 +8,33 @@ import { HudProgress } from "@/components/system/hud-progress";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/system/empty-state";
 import { ExerciseObjectiveCard } from "@/components/quest/exercise-objective-card";
+import { ExtraWorkoutPanel } from "@/components/quest/extra-workout-panel";
 import { completeRecoveryDay } from "@/actions/workout";
+import type { ExtraWorkoutSummaryDTO } from "@/actions/extra-workout";
 import { showErrorToast } from "@/lib/toast-system";
 import type { DailyWorkoutDTO } from "@/types";
 
-export function QuestChecklist({ initial }: { initial: DailyWorkoutDTO | null }) {
+export function QuestChecklist({
+  initial,
+  extras,
+}: {
+  initial: DailyWorkoutDTO | null;
+  extras: ExtraWorkoutSummaryDTO;
+}) {
   const [quest, setQuest] = useState(initial);
   const [pending, startTransition] = useTransition();
 
+  // Overtime is loggable on every day type, including rest days and days with no scheduled quest.
   if (!quest) {
     return (
-      <EmptyState
-        title="NO ACTIVE QUEST"
-        description="Your next scheduled workout will appear here once you activate a routine."
-        icon={Moon}
-      />
+      <div className="mx-auto max-w-2xl space-y-5">
+        <EmptyState
+          title="NO ACTIVE QUEST"
+          description="Your next scheduled workout will appear here once you activate a routine."
+          icon={Moon}
+        />
+        <ExtraWorkoutPanel initial={extras} />
+      </div>
     );
   }
 
@@ -41,33 +53,37 @@ export function QuestChecklist({ initial }: { initial: DailyWorkoutDTO | null })
     }
 
     return (
-      <SystemPanel variant="violet" className="mx-auto flex max-w-lg flex-col items-center gap-3 py-12 text-center">
-        {isRest ? (
-          <Moon className="h-10 w-10 text-glow-violet" />
-        ) : (
-          <Sparkle className="h-10 w-10 text-glow-violet" />
-        )}
-        <SystemLabel accent>{isRest ? "Recovery Day" : "Optional Quest"}</SystemLabel>
-        <SystemHeading>{quest.workoutName}</SystemHeading>
-        {isRest ? (
-          <>
+      <div className="mx-auto max-w-2xl space-y-5">
+        <SystemPanel variant="violet" className="flex flex-col items-center gap-3 py-12 text-center">
+          {isRest ? (
+            <Moon className="h-10 w-10 text-glow-violet" />
+          ) : (
+            <Sparkle className="h-10 w-10 text-glow-violet" />
+          )}
+          <SystemLabel accent>{isRest ? "Recovery Day" : "Optional Quest"}</SystemLabel>
+          <SystemHeading>{quest.workoutName}</SystemHeading>
+          {isRest ? (
+            <>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                Rest and recover. Optional light mobility or walking.
+              </p>
+              <Button
+                onClick={handleAcknowledge}
+                disabled={pending || quest.status === "complete"}
+                className="heading-system tracking-widest"
+              >
+                {quest.status === "complete" ? "RECOVERY LOGGED ✓" : pending ? "SAVING..." : "COMPLETE RECOVERY DAY"}
+              </Button>
+            </>
+          ) : (
             <p className="max-w-sm text-sm text-muted-foreground">
-              Rest and recover. Optional light mobility or walking.
+              No completion required. Badminton, walking, light cardio, mobility, or rest.
             </p>
-            <Button
-              onClick={handleAcknowledge}
-              disabled={pending || quest.status === "complete"}
-              className="heading-system tracking-widest"
-            >
-              {quest.status === "complete" ? "RECOVERY LOGGED ✓" : pending ? "SAVING..." : "COMPLETE RECOVERY DAY"}
-            </Button>
-          </>
-        ) : (
-          <p className="max-w-sm text-sm text-muted-foreground">
-            No completion required. Badminton, walking, light cardio, mobility, or rest.
-          </p>
-        )}
-      </SystemPanel>
+          )}
+        </SystemPanel>
+
+        <ExtraWorkoutPanel initial={extras} />
+      </div>
     );
   }
 
@@ -87,6 +103,8 @@ export function QuestChecklist({ initial }: { initial: DailyWorkoutDTO | null })
           <ExerciseObjectiveCard key={ex.id} index={i + 1} exercise={ex} />
         ))}
       </div>
+
+      <ExtraWorkoutPanel initial={extras} />
     </div>
   );
 }
