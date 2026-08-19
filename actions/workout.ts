@@ -6,7 +6,7 @@ import { DailyWorkout } from "@/models/DailyWorkout";
 import { WorkoutTemplate } from "@/models/WorkoutTemplate";
 import { Exercise } from "@/models/Exercise";
 import { requireUserDoc } from "@/lib/session";
-import { todayKey, dayOfWeekFromKey, weekRange, isoWeekKey } from "@/lib/dates";
+import { todayKey, yesterdayKey, dayOfWeekFromKey, weekRange, isoWeekKey, formatDateKey } from "@/lib/dates";
 import { queueXpAward, XP_VALUES } from "@/lib/xp";
 import { checkAndUnlockAchievements } from "@/lib/achievements";
 import { recomputeStreak } from "@/lib/streak";
@@ -164,16 +164,39 @@ export async function getTotalCalorieBurn(approvedOnly = false): Promise<TotalCa
   return { totalKcal, totalWorkouts };
 }
 
-/** Resolves (creating if needed) today's DailyWorkout from the user's active template. */
-export async function getTodayQuest(): Promise<DailyWorkoutDTO | null> {
-  const user = await requireUserDoc();
-  if (!user.activeTemplateId) return null;
+/** The subset of a lean WorkoutTemplate doc that resolveQuestForDate actually reads. */
+interface ScheduleTemplateLike {
+  _id: Types.ObjectId;
+  name: string;
+  schedule: {
+    dayOfWeek: number;
+    type: "workout" | "rest" | "optional";
+    label: string;
+    exercises: {
+      exerciseId: Types.ObjectId;
+      name: string;
+      muscleGroup: string;
+      targetSets: number;
+      targetRepsMin: number;
+      targetRepsMax: number;
+      repsUnit?: "reps" | "seconds" | null;
+      perSide?: boolean | null;
+    }[];
+  }[];
+}
 
-  const template = await WorkoutTemplate.findById(user.activeTemplateId).lean();
-  if (!template) return null;
-
-  const date = todayKey();
-  const existing = await DailyWorkout.findOne({ userId: user._id, date }).lean();
+/**
+ * Resolves (creating if needed) the DailyWorkout for a given date from the user's active
+ * template — shared by getTodayQuest and getMissedYesterdayQuest so "what would this day's
+ * quest look like" is defined in exactly one place regardless of which date it's asked for.
+ * Returns null only when the template has no schedule entry for that day of week at all.
+ */
+async function resolveQuestForDate(
+  userId: Types.ObjectId,
+  template: ScheduleTemplateLike,
+  date: string
+): Promise<DailyWorkoutDTO | null> {
+  const existing = await DailyWorkout.findOne({ userId, date }).lean();
   if (existing) return toDailyWorkoutDTO(existing);
 
   const entry = template.schedule.find((d) => d.dayOfWeek === dayOfWeekFromKey(date));
@@ -204,7 +227,7 @@ export async function getTodayQuest(): Promise<DailyWorkoutDTO | null> {
 
   try {
     const created = await DailyWorkout.create({
-      userId: user._id,
+      userId,
       templateId: template._id,
       templateName: template.name,
       date,
@@ -222,9 +245,43 @@ export async function getTodayQuest(): Promise<DailyWorkoutDTO | null> {
     return toDailyWorkoutDTO(created.toObject());
   } catch {
     // Unique-index race: another request created it first — just fetch it.
-    const raced = await DailyWorkout.findOne({ userId: user._id, date }).lean();
+    const raced = await DailyWorkout.findOne({ userId, date }).lean();
     return raced ? toDailyWorkoutDTO(raced) : null;
   }
+}
+
+/** Resolves (creating if needed) today's DailyWorkout from the user's active template. */
+export async function getTodayQuest(): Promise<DailyWorkoutDTO | null> {
+  const user = await requireUserDoc();
+  if (!user.activeTemplateId) return null;
+
+  const template = await WorkoutTemplate.findById(user.activeTemplateId).lean();
+  if (!template) return null;
+
+  return resolveQuestForDate(user._id, template, todayKey());
+}
+
+/**
+ * Yesterday's scheduled training day, but only when it's a workout the player never finished —
+ * lets the Quest page offer a one-day "catch up" window (see quest-checklist.tsx's missed-quest
+ * banner) instead of a missed day just being lost. Auto-creates yesterday's DailyWorkout from
+ * the template the same way getTodayQuest() does, so it exists to log sets against even if the
+ * player never opened the app at all yesterday. Returns null for rest/optional days, days
+ * already completed, or days before the account existed (nothing was actually missed then).
+ */
+export async function getMissedYesterdayQuest(): Promise<DailyWorkoutDTO | null> {
+  const user = await requireUserDoc();
+  if (!user.activeTemplateId) return null;
+
+  const date = yesterdayKey();
+  if (formatDateKey(user.createdAt) > date) return null;
+
+  const template = await WorkoutTemplate.findById(user.activeTemplateId).lean();
+  if (!template) return null;
+
+  const quest = await resolveQuestForDate(user._id, template, date);
+  if (!quest || quest.type !== "workout" || quest.status === "complete") return null;
+  return quest;
 }
 
 export async function startQuest(dailyWorkoutId: string): Promise<DailyWorkoutDTO | null> {

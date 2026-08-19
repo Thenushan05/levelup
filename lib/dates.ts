@@ -13,6 +13,12 @@ export function todayKey(): string {
   return formatDateKey(new Date());
 }
 
+/** Yesterday's date key — the one-day catch-up window a missed quest stays
+ * completable in (see getMissedYesterdayQuest in actions/workout.ts). */
+export function yesterdayKey(): string {
+  return addDays(todayKey(), -1);
+}
+
 export function parseDateKey(dateKey: string): Date {
   const [y, m, d] = dateKey.split("-").map(Number);
   return new Date(y, m - 1, d);

@@ -14,9 +14,13 @@ const STATUS_LABEL: Record<string, string> = {
 export function ExerciseObjectiveCard({
   index,
   exercise,
+  basePath = "/quest",
 }: {
   index: number;
   exercise: ExerciseEntryDTO;
+  /** Lets the same card be reused for a different day's checklist — e.g. "/quest/yesterday"
+   * for the missed-quest catch-up flow — instead of always linking into today's quest. */
+  basePath?: string;
 }) {
   const completedSets = exercise.sets.filter((s) => s.completed).length;
   const isComplete = exercise.status === "complete";
@@ -29,7 +33,7 @@ export function ExerciseObjectiveCard({
 
   return (
     <Link
-      href={`/quest/${exercise.id}`}
+      href={`${basePath}/${exercise.id}`}
       className={cn(
         "system-panel flex items-center gap-4 p-4 transition-colors hover:bg-accent/40",
         isComplete && "system-panel-success"
