@@ -6,6 +6,7 @@ import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { EmptyState } from "@/components/system/empty-state";
 import { formatDisplayDate } from "@/lib/dates";
 import { DeleteUserButton } from "./delete-user-button";
+import { GrantXpButton } from "./grant-xp-button";
 
 export const metadata: Metadata = { title: "Admin — Users — LevelUp" };
 
@@ -47,7 +48,10 @@ export default async function AdminUsersPage() {
                   {u.currentStreak} day streak · joined {formatDisplayDate(u.createdAt.slice(0, 10))}
                 </p>
               </div>
-              <DeleteUserButton id={u.id} name={u.name} email={u.email} />
+              <div className="flex shrink-0 items-center gap-2">
+                <GrantXpButton id={u.id} name={u.name} level={u.level} xp={u.xp} />
+                <DeleteUserButton id={u.id} name={u.name} email={u.email} />
+              </div>
             </SystemPanel>
           ))}
         </div>

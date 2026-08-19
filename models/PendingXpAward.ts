@@ -13,6 +13,7 @@ const PendingXpAwardSchema = new Schema(
         "weekly_quest_complete",
         "achievement_unlocked",
         "extra_workout",
+        "admin_grant",
       ],
       required: true,
     },
