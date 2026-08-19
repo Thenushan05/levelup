@@ -5,6 +5,7 @@ import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { EmptyState } from "@/components/system/empty-state";
 import { formatDisplayDate } from "@/lib/dates";
+import { requiredXpForLevel } from "@/lib/xp";
 import { DeleteUserButton } from "./delete-user-button";
 import { GrantXpButton } from "./grant-xp-button";
 
@@ -49,7 +50,7 @@ export default async function AdminUsersPage() {
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <GrantXpButton id={u.id} name={u.name} level={u.level} xp={u.xp} />
+                <GrantXpButton id={u.id} name={u.name} level={u.level} xp={u.xp} requiredXp={requiredXpForLevel(u.level)} />
                 <DeleteUserButton id={u.id} name={u.name} email={u.email} />
               </div>
             </SystemPanel>
