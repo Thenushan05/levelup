@@ -10,12 +10,15 @@ import { UserAchievement } from "@/models/UserAchievement";
 import { PendingXpAward } from "@/models/PendingXpAward";
 import { Notification } from "@/models/Notification";
 import { GymGroup } from "@/models/GymGroup";
+import { applyXp, snapshotLevel, diffLevel } from "@/lib/xp";
+import { notifyUser, notifyUserAndParty } from "@/lib/notify";
 
 export interface AdminUserSummaryDTO {
   id: string;
   name: string;
   email: string;
   level: number;
+  xp: number;
   rank: string;
   isAdmin: boolean;
   onboardingCompleted: boolean;
@@ -34,6 +37,7 @@ export async function getAllUsersAdmin(): Promise<AdminUserSummaryDTO[]> {
     name: u.name,
     email: u.email,
     level: u.level,
+    xp: u.xp,
     rank: u.rank,
     isAdmin: !!u.isAdmin,
     onboardingCompleted: !!u.onboardingCompleted,
@@ -99,4 +103,75 @@ export async function deleteUserAccount(targetUserId: string): Promise<DeleteUse
 
   revalidatePath("/admin/users");
   return { success: true };
+}
+
+/** Sanity ceiling on a single manual grant — well above WEEK_XP (370), but still
+ * guards against a fat-fingered extra zero going straight to a user's account. */
+const MAX_MANUAL_XP_GRANT = 10000;
+
+export type GrantXpResult =
+  | { success: true; leveledUp: boolean; toLevel: number }
+  | { success: false; error: string };
+
+/**
+ * Unlike every other XP-earning event, this doesn't go through queueXpAward's
+ * pending-review queue — the admin granting it manually IS the approval
+ * decision. It still writes a PendingXpAward row (pre-"approved", reviewedBy
+ * the granting admin) purely as an audit trail, mirroring how approveXpAward
+ * settles a normal award, and follows the same notify + level-up-announce
+ * shape so the player sees it the same way any other approved XP arrives.
+ */
+export async function grantManualXp(targetUserId: string, amount: number, reason: string): Promise<GrantXpResult> {
+  const admin = await requireAdminDoc();
+  await connectToDatabase();
+
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { success: false, error: "Enter a whole number of XP greater than 0." };
+  }
+  if (amount > MAX_MANUAL_XP_GRANT) {
+    return { success: false, error: `That's too much XP to grant at once (max ${MAX_MANUAL_XP_GRANT.toLocaleString()}).` };
+  }
+
+  const target = await User.findById(targetUserId);
+  if (!target) {
+    return { success: false, error: "User not found." };
+  }
+
+  const title = reason.trim() || "Manual Admin Grant";
+
+  const before = snapshotLevel(target);
+  applyXp(target, amount);
+  await target.save();
+
+  await PendingXpAward.create({
+    userId: target._id,
+    amount,
+    reason: "admin_grant",
+    title,
+    status: "approved",
+    reviewedBy: admin._id,
+    reviewedAt: new Date(),
+  });
+
+  await notifyUser(target._id.toString(), "objective_complete", "XP Granted", `${title} · +${amount} XP`, {
+    xp: amount,
+    approved: true,
+    grantedBy: admin.name,
+  });
+
+  const levelUp = diffLevel(before, target);
+  if (levelUp.leveledUp) {
+    await notifyUserAndParty(
+      { id: target._id.toString(), name: target.name },
+      "level_up",
+      "party_level_up",
+      `${target.name} reached Level ${levelUp.toLevel}.`,
+      levelUp.rankChanged ? `Rank up: ${levelUp.toRank} Rank` : "",
+      { fromLevel: levelUp.fromLevel, toLevel: levelUp.toLevel }
+    );
+  }
+
+  revalidatePath("/admin/users");
+  revalidatePath("/dashboard");
+  return { success: true, leveledUp: levelUp.leveledUp, toLevel: target.level };
 }

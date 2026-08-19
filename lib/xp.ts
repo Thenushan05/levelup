@@ -10,7 +10,8 @@ export type XpReason =
   | "quest_complete"
   | "weekly_quest_complete"
   | "achievement_unlocked"
-  | "extra_workout";
+  | "extra_workout"
+  | "admin_grant";
 
 /**
  * The entire leveling curve lives here so it's configurable in one place.

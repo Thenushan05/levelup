@@ -21,9 +21,13 @@ import type { AssistLevel } from "@/types";
 export function ExerciseDetailClient({
   dailyWorkoutId,
   initialDetail,
+  backHref = "/quest",
 }: {
   dailyWorkoutId: string;
   initialDetail: ExerciseDetailDTO;
+  /** Where "Back to Quest" and the complete-modal's close both return to — "/quest/yesterday"
+   * when this is showing a catch-up day instead of today's quest. */
+  backHref?: string;
 }) {
   const router = useRouter();
   const [exercise, setExercise] = useState(initialDetail.exercise);
@@ -110,7 +114,7 @@ export function ExerciseDetailClient({
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <Link href="/quest" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> Back to Quest
       </Link>
 
@@ -185,7 +189,7 @@ export function ExerciseDetailClient({
         data={completeData}
         onClose={() => {
           setCompleteData(null);
-          router.push("/quest");
+          router.push(backHref);
         }}
       />
     </div>

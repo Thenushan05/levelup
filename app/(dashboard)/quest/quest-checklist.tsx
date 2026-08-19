@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Moon, Sparkle } from "lucide-react";
+import Link from "next/link";
+import { AlarmClockCheck, ChevronRight, Moon, Sparkle } from "lucide-react";
 import { SystemPanel } from "@/components/system/system-panel";
 import { SystemLabel, SystemHeading } from "@/components/system/system-label";
 import { HudProgress } from "@/components/system/hud-progress";
@@ -14,12 +15,35 @@ import type { ExtraWorkoutSummaryDTO } from "@/actions/extra-workout";
 import { showErrorToast } from "@/lib/toast-system";
 import type { DailyWorkoutDTO } from "@/types";
 
+/** Shown atop every branch below when yesterday's scheduled workout was left unfinished — the
+ * one-day catch-up window (see getMissedYesterdayQuest in actions/workout.ts). */
+function MissedQuestBanner({ missed }: { missed: DailyWorkoutDTO }) {
+  return (
+    <Link
+      href="/quest/yesterday"
+      className="system-panel system-panel-danger flex items-center gap-4 p-4 transition-colors hover:bg-accent/40"
+    >
+      <AlarmClockCheck className="h-8 w-8 shrink-0 text-destructive" />
+      <div className="min-w-0 flex-1">
+        <SystemLabel accent>Missed Yesterday</SystemLabel>
+        <p className="heading-system truncate text-sm">{missed.workoutName}</p>
+        <p className="text-xs text-muted-foreground">
+          {missed.completedExercises}/{missed.totalExercises} objectives done — finish it today, before it's gone.
+        </p>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+    </Link>
+  );
+}
+
 export function QuestChecklist({
   initial,
   extras,
+  missedYesterday,
 }: {
   initial: DailyWorkoutDTO | null;
   extras: ExtraWorkoutSummaryDTO;
+  missedYesterday: DailyWorkoutDTO | null;
 }) {
   const [quest, setQuest] = useState(initial);
   const [pending, startTransition] = useTransition();
@@ -28,6 +52,7 @@ export function QuestChecklist({
   if (!quest) {
     return (
       <div className="mx-auto max-w-2xl space-y-5">
+        {missedYesterday && <MissedQuestBanner missed={missedYesterday} />}
         <EmptyState
           title="NO ACTIVE QUEST"
           description="Your next scheduled workout will appear here once you activate a routine."
@@ -54,6 +79,7 @@ export function QuestChecklist({
 
     return (
       <div className="mx-auto max-w-2xl space-y-5">
+        {missedYesterday && <MissedQuestBanner missed={missedYesterday} />}
         <SystemPanel variant="violet" className="flex flex-col items-center gap-3 py-12 text-center">
           {isRest ? (
             <Moon className="h-10 w-10 text-glow-violet" />
@@ -89,6 +115,7 @@ export function QuestChecklist({
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
+      {missedYesterday && <MissedQuestBanner missed={missedYesterday} />}
       <SystemPanel className="space-y-3 text-center">
         <SystemLabel accent>Daily Quest</SystemLabel>
         <SystemHeading>{quest.workoutName}</SystemHeading>

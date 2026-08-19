@@ -15,6 +15,7 @@ const REASON_LABEL: Record<string, string> = {
   weekly_quest_complete: "Weekly Quest",
   achievement_unlocked: "Achievement",
   extra_workout: "Extra Workout",
+  admin_grant: "Admin Grant",
 };
 
 export function ApprovalRow({
